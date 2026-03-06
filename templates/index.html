@@ -153,7 +153,10 @@
     </div>
 
     <div id="chat-sidebar">
-        <div style="padding:20px; font-weight:bold; border-bottom:1px solid #333;">Messages</div>
+        <div style="padding:20px; font-weight:bold; border-bottom:1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+            Messages
+            <span class="material-symbols-outlined" style="cursor:pointer; color:#aaa; font-size: 20px;" onclick="toggleChat()">close</span>
+        </div>
         <div id="chat-msgs"></div>
         <div class="chat-input"><input type="text" id="chatIn" placeholder="Type a message..." onkeypress="if(event.key==='Enter') sendChat()"></div>
     </div>
@@ -301,7 +304,11 @@
             return;
         }
         const m = document.getElementById('chat-msgs');
-        m.innerHTML += `<div style="background:${data.user===myName?'rgba(255,140,0,0.1)':'#2a2a2a'}; padding:8px 12px; border-radius:10px; margin-bottom:5px;"><b>${data.user}:</b> ${data.msg}</div>`;
+        
+        // Formatter for chat timestamps
+        const timeNow = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        m.innerHTML += `<div style="background:${data.user===myName?'rgba(255,140,0,0.1)':'#2a2a2a'}; padding:8px 12px; border-radius:10px; margin-bottom:5px;"><b>${data.user}</b> <span style="font-size: 0.75rem; color: #888; margin-left: 5px;">${timeNow}</span><br> ${data.msg}</div>`;
         m.scrollTop = m.scrollHeight;
     });
 
