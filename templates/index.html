@@ -62,12 +62,31 @@
         .icon-badge.red:hover { background: #ff5242; }
         .icon-badge span { font-size: 16px; }
 
-        /* Host Admin Controls Array */
-        .admin-controls { display: none; position: absolute; top: 10px; left: 10px; gap: 5px; z-index: 20; opacity: 0; transition: 0.2s; }
-        .video-wrapper:hover .admin-controls { opacity: 1; }
-        .admin-btn { background: rgba(0, 0, 0, 0.7); border: 1px solid #444; color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; backdrop-filter: blur(4px); transition: 0.2s; }
-        .admin-btn:hover { background: var(--orange); color: black; border-color: var(--orange); }
-        .admin-btn.red:hover { background: var(--red); color: white; border-color: var(--red); }
+        /* 3-Dot Host Menu */
+        .host-menu-container { position: absolute; top: 10px; right: 10px; z-index: 20; }
+        .host-menu-btn { 
+            background: rgba(0,0,0,0.6); color: white; border: none; 
+            width: 32px; height: 32px; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; backdrop-filter: blur(4px); transition: 0.2s; 
+        }
+        .host-menu-btn:hover { background: rgba(0,0,0,0.8); color: var(--orange); }
+        
+        .host-dropdown { 
+            position: absolute; top: 38px; right: 0; background: var(--panel); 
+            border: 1px solid #333; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); 
+            display: none; flex-direction: column; overflow: hidden; min-width: 140px; 
+        }
+        .host-dropdown.show { display: flex; }
+        
+        .dropdown-item { 
+            padding: 10px 15px; color: white; background: none; border: none; 
+            text-align: left; cursor: pointer; font-size: 0.85rem; font-family: 'Nunito'; 
+            display: flex; align-items: center; gap: 8px; transition: 0.2s;
+        }
+        .dropdown-item:hover { background: #2a2a2a; color: var(--orange); }
+        .dropdown-item.red:hover { color: var(--red); }
+        .dropdown-item span { font-size: 18px; }
 
         /* Top Left Info & Host Badge */
         #top-info { position: fixed; top: 30px; left: 30px; color: white; z-index: 90; font-weight: 600; display: flex; align-items: center; gap: 15px; }
@@ -210,15 +229,11 @@
         document.getElementById('name-overlay').style.display = 'none';
         
         try {
-            // Get camera ready while we wait
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             document.getElementById('localVideo').srcObject = localStream;
             document.getElementById('local-init').innerText = myName[0].toUpperCase();
             
-            // Go to waiting room UI
             document.getElementById('waiting-overlay').style.display = 'flex';
-            
-            // Ask server/host for permission
             socket.emit('request-join', { room, userId: myId, name: myName });
         } catch(e) { alert("Camera access required."); }
     }
@@ -256,10 +271,9 @@
         
         if (isHost) {
             document.getElementById('host-badge').style.display = 'inline-block';
-            setTimeout(() => toggleInvite(), 500); // Only auto-show invite to host
+            setTimeout(() => toggleInvite(), 500); 
         }
         
-        // Officially enter the room
         socket.emit('join-room', { room, userId: myId, name: myName });
         monitorSpeech(localStream, 'local-wrapper');
     });
@@ -294,6 +308,27 @@
         btn.classList.toggle('active', !state);
         btn.innerHTML = state ? '<span class="material-symbols-outlined">videocam</span>' : '<span class="material-symbols-outlined">videocam_off</span>';
         socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'cam', state: state });
+    }
+
+    // --- HOST MENU DROPDOWN LOGIC ---
+    // Close dropdowns if clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.host-menu-container')) {
+            document.querySelectorAll('.host-dropdown').forEach(d => d.classList.remove('show'));
+        }
+    });
+
+    function toggleHostMenu(userId) {
+        // Close others first
+        document.querySelectorAll('.host-dropdown').forEach(d => {
+            if(d.id !== `menu-${userId}`) d.classList.remove('show');
+        });
+        document.getElementById(`menu-${userId}`).classList.toggle('show');
+    }
+
+    function executeAdmin(targetId, action) {
+        document.getElementById(`menu-${targetId}`).classList.remove('show');
+        socket.emit('admin-action', {target: targetId, action: action});
     }
 
     // --- WEBRTC CONNECTION LOGIC ---
@@ -335,14 +370,25 @@
             wrap.className = 'video-wrapper';
             wrap.id = `wrap-${partnerId}`;
             
-            // Build Admin Buttons if Host
+            // Build Admin Dropdown if Host
             let adminHTML = '';
             if (isHost) {
                 adminHTML = `
-                <div class="admin-controls">
-                    <button class="admin-btn" onclick="socket.emit('admin-action', {target: '${partnerId}', action: 'mute'})">Mute Mic</button>
-                    <button class="admin-btn" onclick="socket.emit('admin-action', {target: '${partnerId}', action: 'cam-off'})">Turn Off Cam</button>
-                    <button class="admin-btn red" onclick="socket.emit('admin-action', {target: '${partnerId}', action: 'kick'})">Kick</button>
+                <div class="host-menu-container">
+                    <button class="host-menu-btn" onclick="toggleHostMenu('${partnerId}')">
+                        <span class="material-symbols-outlined">more_vert</span>
+                    </button>
+                    <div class="host-dropdown" id="menu-${partnerId}">
+                        <button class="dropdown-item" onclick="executeAdmin('${partnerId}', 'mute')">
+                            <span class="material-symbols-outlined">mic_off</span> Mute
+                        </button>
+                        <button class="dropdown-item" onclick="executeAdmin('${partnerId}', 'cam-off')">
+                            <span class="material-symbols-outlined">videocam_off</span> Turn Off Cam
+                        </button>
+                        <button class="dropdown-item red" onclick="executeAdmin('${partnerId}', 'kick')">
+                            <span class="material-symbols-outlined">person_remove</span> Kick
+                        </button>
+                    </div>
                 </div>`;
             }
 
@@ -382,7 +428,6 @@
 
     // --- SIDEBARS & FILTERS ---
     function toggleSidebar(id) {
-        // Close all others first
         document.querySelectorAll('.sidebar').forEach(el => {
             if (el.id !== id) el.classList.remove('open');
         });
@@ -390,16 +435,13 @@
     }
 
     function applyFilter(filterClass, el) {
-        // Update UI highlight
         document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
 
-        // Apply to self
         const wrapper = document.getElementById('local-wrapper');
         wrapper.className = wrapper.className.replace(/\bf-\S+/g, '');
         if (filterClass !== 'none') wrapper.classList.add(filterClass);
         
-        // Broadcast to room
         socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: filterClass });
     }
 
@@ -451,12 +493,10 @@
         m.innerHTML += `<div style="background:${data.user===myName?'rgba(255,140,0,0.1)':'#2a2a2a'}; padding:8px 12px; border-radius:10px; margin-bottom:5px;"><b>${data.user}</b> <span style="font-size: 0.75rem; color: #888; margin-left: 5px;">${timeNow}</span><br> ${data.msg}</div>`;
         m.scrollTop = m.scrollHeight;
         
-        // Auto-open chat
         if (!document.getElementById('chat-sidebar').classList.contains('open') && data.user !== myName) toggleSidebar('chat-sidebar');
     });
 
-    // Screen Share, Pinning, Links...
-    async function toggleScreen() { /* Unchanged Screen Share logic */
+    async function toggleScreen() { 
         if (!screenStream) {
             try {
                 screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
