@@ -5,79 +5,82 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SODMeet | {{ room_id }}</title>
     <link rel="icon" href="{{ url_for('static', filename='logo.png') }}">
+    
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     
     <style>
-        :root { --orange: #FF8C00; --bg: #0a0a0a; --panel: #1a1a1a; --red: #ea4335; }
+        :root { --orange: #FF8C00; --bg: #0f0f11; --panel: #1a1a1e; --red: #ea4335; }
         
         body, input, button { font-family: 'Nunito', sans-serif; margin: 0; }
-        body { background: var(--bg); color: white; height: 100vh; overflow: hidden; }
+        body { background: var(--bg); color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-        /* Name Prompt Overlay */
         #name-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; align-items: center; justify-content: center; }
-        .name-card { background: var(--panel); padding: 40px; border-radius: 24px; border: 1px solid var(--orange); text-align: center; width: 380px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .name-card { background: var(--panel); padding: 40px; border-radius: 24px; border: 1px solid rgba(255,140,0,0.3); text-align: center; width: 380px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
         .name-card img { width: 80px; margin-bottom: 20px; border-radius: 15px; }
-        .name-card input { width: 100%; padding: 16px; margin: 20px 0; border-radius: 12px; border: 2px solid #333; background: #000; color: white; font-size: 1.1rem; text-align: center; outline: none; box-sizing: border-box; }
-        .join-btn { background: var(--orange); color: black; border: none; padding: 15px; width: 100%; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
+        .name-card input { width: 100%; padding: 16px; margin: 20px 0; border-radius: 12px; border: 2px solid #333; background: #000; color: white; font-size: 1.1rem; text-align: center; outline: none; transition: 0.3s; }
+        .name-card input:focus { border-color: var(--orange); }
+        .join-btn { background: var(--orange); color: black; border: none; padding: 15px; width: 100%; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1.1rem; transition: 0.2s; }
+        .join-btn:hover { background: #ff9d26; transform: translateY(-2px); }
 
-        /* Video Grid & Pin Mode */
+        /* The Auto-Aligning Grid Fix */
+        #main-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px 20px 100px 20px; overflow: hidden; }
+        
         #video-grid { 
-            display: flex; flex-wrap: wrap; justify-content: center; align-items: center; 
-            gap: 15px; padding: 20px; height: calc(100vh - 90px); 
-            box-sizing: border-box; transition: all 0.4s ease;
+            display: flex; flex-wrap: wrap; justify-content: center; align-content: center; 
+            gap: 15px; width: 100%; height: 100%; max-width: 1600px; 
         }
-
-        /* Logic for Pinning */
-        #video-grid.pin-active { align-items: flex-start; align-content: flex-start; }
         
         .video-wrapper { 
-            position: relative; flex: 1 1 45%; min-width: 300px; max-width: 800px; 
+            position: relative; flex: 1 1 300px; max-width: calc(33.333% - 15px); 
             aspect-ratio: 16/9; background: #111; border-radius: 16px; 
-            overflow: hidden; border: 2px solid transparent; transition: all 0.4s ease;
+            overflow: hidden; border: 2px solid transparent; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4); transition: 0.3s;
         }
 
-        /* When a video is pinned */
-        #video-grid.pin-active .video-wrapper:not(.pinned) {
-            flex: 0 0 240px; height: 135px; max-width: 240px;
-        }
-        #video-grid.pin-active .video-wrapper.pinned {
-            flex: 1 1 100%; max-width: 1200px; order: -1; /* Always first */
-        }
+        /* Scales down columns on smaller screens */
+        @media (max-width: 1000px) { .video-wrapper { max-width: calc(50% - 15px); } }
+        @media (max-width: 600px) { .video-wrapper { max-width: 100%; } }
+
+        /* Perfect Center for Only Child */
+        .video-wrapper:only-child { max-width: 900px; max-height: 80vh; flex: 0 1 100%; }
 
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        
-        /* Action Buttons on Video (Pin/Unpin) */
-        .video-actions {
-            position: absolute; top: 10px; right: 10px; z-index: 20;
-            display: flex; gap: 8px; opacity: 0; transition: 0.2s;
-        }
-        .video-wrapper:hover .video-actions { opacity: 1; }
-        .pin-btn {
-            background: rgba(0,0,0,0.6); color: white; border: none; 
-            width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; font-size: 18px;
-        }
-        .pin-btn.active { background: var(--orange); color: black; }
 
-        /* Avatar Placeholder */
+        /* Avatar & Status Overlays */
         .avatar-view { position: absolute; inset: 0; background: #222; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5; }
         .cam-off .avatar-view { display: flex; }
         .initials { width: 80px; height: 80px; background: var(--orange); color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; }
-        .name-tag { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; z-index: 10; border-left: 2px solid var(--orange); }
+        
+        .info-bar { position: absolute; bottom: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        .name-tag { background: rgba(0,0,0,0.6); padding: 6px 16px; border-radius: 20px; font-size: 0.9rem; font-weight: 600; border-left: 2px solid var(--orange); backdrop-filter: blur(4px); }
+        .status-icons { display: flex; gap: 8px; }
+        .mic-off-badge { background: rgba(234, 67, 53, 0.9); padding: 5px; border-radius: 50%; display: flex; align-items: center; justify-content: center; display: none; }
+        .mic-off-badge span { font-size: 16px; color: white; }
 
-        /* Controls Bar */
-        #controls { position: fixed; bottom: 0; width: 100%; height: 80px; background: #111; display: flex; justify-content: space-between; align-items: center; padding: 0 30px; box-sizing: border-box; border-top: 1px solid #333; z-index: 100; }
-        .ctrl-group { display: flex; gap: 15px; }
-        .circle-btn { width: 50px; height: 50px; border-radius: 50%; border: none; background: #2a2a2a; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+        /* Controls */
+        #controls { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); background: rgba(26, 26, 30, 0.9); backdrop-filter: blur(10px); padding: 12px 25px; border-radius: 50px; display: flex; gap: 15px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 100; align-items: center; }
+        .circle-btn { width: 50px; height: 50px; border-radius: 50%; border: none; background: #2e2e33; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .circle-btn:hover { background: #3e3e44; transform: scale(1.05); }
         .circle-btn.red { background: var(--red); }
-        .circle-btn.active { background: var(--orange); color: black; }
+        .circle-btn.active { background: rgba(234, 67, 53, 0.2); color: var(--red); border: 1px solid var(--red); }
+        .material-symbols-outlined { font-size: 24px; }
 
-        /* Sidebar & Popups */
-        #chat-sidebar { position: fixed; top: 0; right: -360px; width: 350px; height: calc(100vh - 80px); background: var(--panel); border-left: 2px solid var(--orange); transition: 0.3s; z-index: 1000; display: flex; flex-direction: column; }
+        #top-info { position: fixed; bottom: 35px; left: 30px; color: white; z-index: 90; font-weight: 600; display: flex; align-items: center; gap: 15px; }
+        .divider { width: 1px; height: 15px; background: #555; }
+        
+        #chat-sidebar { position: fixed; top: 0; right: -360px; width: 350px; height: 100vh; background: rgba(26, 26, 30, 0.95); backdrop-filter: blur(15px); border-left: 1px solid #333; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(0,0,0,0.5); }
         #chat-sidebar.open { right: 0; }
-        #invite-popup { position: fixed; left: 20px; bottom: 100px; width: 320px; background: white; color: #121212; padding: 25px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 500; display: none; }
+        .chat-head { padding: 25px 20px; font-weight: bold; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        #chat-msgs { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .chat-input { padding: 20px; border-top: 1px solid #333; display: flex; gap: 10px; }
+        .chat-input input { flex: 1; background: #111; border: 1px solid #444; color: white; padding: 12px 15px; border-radius: 20px; outline: none; }
+        .chat-input input:focus { border-color: var(--orange); }
+
+        #invite-popup { position: fixed; left: 30px; bottom: 90px; width: 320px; background: white; color: #121212; padding: 25px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); z-index: 500; display: none; }
+        #invite-popup h3 { margin-top: 0; margin-bottom: 5px; font-size: 1.1rem; }
+        .link-box { background: #f1f3f4; padding: 12px; margin: 15px 0; border-radius: 8px; font-family: monospace; font-size: 0.9rem; word-break: break-all; border: 1px solid #ddd; }
     </style>
 </head>
 <body>
@@ -91,44 +94,53 @@
         </div>
     </div>
 
-    <div id="video-grid">
-        <div class="video-wrapper" id="local-wrapper">
-            <div class="video-actions">
-                <button class="pin-btn" onclick="togglePin('local-wrapper')"><ion-icon name="pin-outline"></ion-icon></button>
+    <div id="top-info">
+        <span id="clock"></span>
+        <div class="divider"></div>
+        <span style="letter-spacing: 1px; color: #aaa;">{{ room_id }}</span>
+    </div>
+
+    <div id="main-stage">
+        <div id="video-grid">
+            <div class="video-wrapper" id="local-wrapper">
+                <div class="avatar-view"><div class="initials" id="local-init">?</div></div>
+                <div class="info-bar">
+                    <div class="name-tag" id="local-tag">You</div>
+                    <div class="status-icons">
+                        <div class="mic-off-badge" id="local-mic-badge"><span class="material-symbols-outlined">mic_off</span></div>
+                    </div>
+                </div>
+                <video id="localVideo" autoplay playsinline muted></video>
             </div>
-            <div class="avatar-view"><div class="initials" id="local-init">?</div></div>
-            <div class="name-tag" id="local-tag">You</div>
-            <video id="localVideo" autoplay playsinline muted></video>
         </div>
     </div>
 
     <div id="invite-popup">
-        <span style="float:right; cursor:pointer;" onclick="toggleInvite()">×</span>
+        <span style="float:right; cursor:pointer; font-size: 1.2rem; color: #555;" onclick="toggleInvite()">×</span>
         <h3>Your meeting is ready</h3>
-        <div id="meet-link" style="background:#f1f3f4; padding:10px; margin:10px 0; font-size:0.8rem; word-break:break-all; border-radius:5px;"></div>
-        <button onclick="copyLink()" style="width:100%; padding:10px; background:var(--orange); border:none; border-radius:6px; cursor:pointer; font-weight:bold; color:black;">Copy Link</button>
+        <p style="font-size: 0.85rem; color: #555; margin: 0;">Share this link to invite others:</p>
+        <div class="link-box" id="meet-link"></div>
+        <button id="copyBtn" onclick="copyLink()" style="width:100%; padding:12px; background:var(--orange); border:none; border-radius:8px; cursor:pointer; font-weight:bold; color:black; transition:0.2s;">Copy Link</button>
     </div>
 
     <div id="chat-sidebar">
-        <div style="padding: 20px; font-weight: bold; border-bottom: 1px solid #333; color: var(--orange);">In-call Messages</div>
-        <div id="chat-msgs" style="flex:1; padding:20px; overflow-y:auto;"></div>
-        <div style="padding:20px; border-top:1px solid #333; display:flex; gap:10px;">
-            <input type="text" id="chatIn" placeholder="Send a message..." onkeypress="if(event.key==='Enter') sendChat()" style="flex:1; background:#000; border:1px solid #444; color:white; padding:10px; border-radius:20px; outline:none;">
+        <div class="chat-head">
+            <span style="font-size: 1.2rem;">In-call Messages</span>
+            <span class="material-symbols-outlined" style="cursor:pointer; color:#aaa;" onclick="toggleChat()">close</span>
+        </div>
+        <div id="chat-msgs"></div>
+        <div class="chat-input">
+            <input type="text" id="chatIn" placeholder="Send a message..." onkeypress="if(event.key==='Enter') sendChat()">
         </div>
     </div>
 
     <div id="controls">
-        <div style="color: #888; font-weight: bold;">SODMeet | <span id="clock"></span></div>
-        <div class="ctrl-group">
-            <button class="circle-btn" id="micBtn" onclick="toggleMic()"><ion-icon name="mic-outline"></ion-icon></button>
-            <button class="circle-btn" id="camBtn" onclick="toggleCam()"><ion-icon name="videocam-outline"></ion-icon></button>
-            <button class="circle-btn" id="shareBtn" onclick="toggleScreen()"><ion-icon name="desktop-outline"></ion-icon></button>
-            <button class="circle-btn red" onclick="window.location.href='/'" style="width:70px; border-radius:25px;"><ion-icon name="call-outline"></ion-icon></button>
-        </div>
-        <div class="ctrl-group">
-            <button class="circle-btn" onclick="toggleInvite()"><ion-icon name="information-circle-outline"></ion-icon></button>
-            <button class="circle-btn" onclick="toggleChat()"><ion-icon name="chatbubble-outline"></ion-icon></button>
-        </div>
+        <button class="circle-btn" id="micBtn" onclick="toggleMic()"><span class="material-symbols-outlined">mic</span></button>
+        <button class="circle-btn" id="camBtn" onclick="toggleCam()"><span class="material-symbols-outlined">videocam</span></button>
+        <button class="circle-btn" id="shareBtn" onclick="toggleScreen()"><span class="material-symbols-outlined">present_to_all</span></button>
+        <button class="circle-btn" onclick="toggleInvite()"><span class="material-symbols-outlined">person_add</span></button>
+        <button class="circle-btn" onclick="toggleChat()"><span class="material-symbols-outlined">chat</span></button>
+        <button class="circle-btn red" onclick="window.location.href='/'" style="width: 70px; border-radius: 30px;"><span class="material-symbols-outlined">call_end</span></button>
     </div>
 
 <script>
@@ -148,9 +160,14 @@
         document.getElementById('local-init').innerText = myName[0].toUpperCase();
         document.getElementById('local-tag').innerText = myName + " (You)";
         
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        document.getElementById('localVideo').srcObject = localStream;
-        socket.emit('join-room', { room, userId: myId, name: myName });
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('localVideo').srcObject = localStream;
+            socket.emit('join-room', { room, userId: myId, name: myName });
+            setTimeout(() => toggleInvite(), 500);
+        } catch(e) {
+            alert("Camera/Mic access denied.");
+        }
     }
 
     socket.on('user-joined', data => initConnection(data.userId, data.name, true));
@@ -158,6 +175,7 @@
     socket.on('signal', async data => {
         if (!peers[data.sender]) initConnection(data.sender, data.senderName || "Guest", false);
         const pc = peers[data.sender].pc;
+
         if (data.sdp) {
             await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
             if (data.sdp.type === 'offer') {
@@ -173,7 +191,17 @@
     function initConnection(partnerId, partnerName, isCaller) {
         const pc = new RTCPeerConnection(config);
         peers[partnerId] = { pc, name: partnerName };
+        
         localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+        // The Cleanup Logic: Removes video when someone leaves or loses connection!
+        pc.oniceconnectionstatechange = () => {
+            if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'closed') {
+                const wrapper = document.getElementById(`wrap-${partnerId}`);
+                if (wrapper) wrapper.remove();
+                delete peers[partnerId];
+            }
+        };
 
         pc.onicecandidate = e => {
             if(e.candidate) socket.emit('signal', { target: partnerId, sender: myId, candidate: e.candidate });
@@ -181,19 +209,25 @@
 
         pc.ontrack = e => {
             if (document.getElementById(`vid-${partnerId}`)) return;
+
             const wrap = document.createElement('div');
             wrap.className = 'video-wrapper';
             wrap.id = `wrap-${partnerId}`;
             wrap.innerHTML = `
-                <div class="video-actions">
-                    <button class="pin-btn" onclick="togglePin('wrap-${partnerId}')"><ion-icon name="pin-outline"></ion-icon></button>
-                </div>
                 <div class="avatar-view"><div class="initials">${partnerName[0].toUpperCase()}</div></div>
-                <div class="name-tag">${partnerName}</div>
+                <div class="info-bar">
+                    <div class="name-tag">${partnerName}</div>
+                    <div class="status-icons">
+                        <div class="mic-off-badge" id="mic-badge-${partnerId}"><span class="material-symbols-outlined">mic_off</span></div>
+                    </div>
+                </div>
                 <video id="vid-${partnerId}" autoplay playsinline></video>
             `;
             document.getElementById('video-grid').appendChild(wrap);
             document.getElementById(`vid-${partnerId}`).srcObject = e.streams[0];
+            
+            // Sync states to the new user immediately
+            syncMyStateToRoom();
         };
 
         if (isCaller) {
@@ -204,27 +238,70 @@
         }
     }
 
-    function togglePin(wrapperId) {
-        const grid = document.getElementById('video-grid');
-        const wrapper = document.getElementById(wrapperId);
-        const isPinned = wrapper.classList.contains('pinned');
-
-        // Remove pin from everyone first
-        document.querySelectorAll('.video-wrapper').forEach(w => {
-            w.classList.remove('pinned');
-            w.querySelector('.pin-btn').classList.remove('active');
-        });
-
-        if (!isPinned) {
-            wrapper.classList.add('pinned');
-            wrapper.querySelector('.pin-btn').classList.add('active');
-            grid.classList.add('pin-active');
-        } else {
-            grid.classList.remove('pin-active');
-        }
+    // Broadcasts camera/mic states to others using the chat channel (without modifying app.py!)
+    function syncMyStateToRoom() {
+        const camState = localStream.getVideoTracks()[0].enabled;
+        const micState = localStream.getAudioTracks()[0].enabled;
+        socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'cam', state: camState });
+        socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'mic', state: micState });
     }
 
+    function toggleCam() {
+        const v = localStream.getVideoTracks()[0];
+        v.enabled = !v.enabled;
+        
+        // Update Local UI
+        document.getElementById('local-wrapper').classList.toggle('cam-off', !v.enabled);
+        const btn = document.getElementById('camBtn');
+        btn.classList.toggle('active', !v.enabled);
+        btn.innerHTML = v.enabled ? '<span class="material-symbols-outlined">videocam</span>' : '<span class="material-symbols-outlined">videocam_off</span>';
+        
+        // Notify Room
+        socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'cam', state: v.enabled });
+    }
+
+    function toggleMic() {
+        const a = localStream.getAudioTracks()[0];
+        a.enabled = !a.enabled;
+        
+        // Update Local UI
+        document.getElementById('local-mic-badge').style.display = a.enabled ? 'none' : 'flex';
+        const btn = document.getElementById('micBtn');
+        btn.classList.toggle('active', !a.enabled);
+        btn.innerHTML = a.enabled ? '<span class="material-symbols-outlined">mic</span>' : '<span class="material-symbols-outlined">mic_off</span>';
+        
+        // Notify Room
+        socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'mic', state: a.enabled });
+    }
+
+    // Handles incoming Chat AND System State changes
+    socket.on('chat-msg', data => {
+        if (data.sys) {
+            // It's a system message hiding as chat! Update the UI for this user.
+            if (data.userId !== myId) {
+                const wrapper = document.getElementById(`wrap-${data.userId}`);
+                if (wrapper) {
+                    if (data.type === 'cam') {
+                        wrapper.classList.toggle('cam-off', !data.state);
+                    } else if (data.type === 'mic') {
+                        document.getElementById(`mic-badge-${data.userId}`).style.display = data.state ? 'none' : 'flex';
+                    }
+                }
+            }
+            return; // Stop here so it doesn't print to the chat window
+        }
+
+        // Standard Chat Logic
+        if(data.user !== myName) {
+            const m = document.getElementById('chat-msgs');
+            m.innerHTML += `<div style="background: #2a2a2a; padding: 10px 15px; border-radius: 12px; align-self: flex-start; max-width: 85%;"><b>${data.user}:</b><br>${data.msg}</div>`;
+            m.scrollTop = m.scrollHeight;
+            if (!document.getElementById('chat-sidebar').classList.contains('open')) toggleChat();
+        }
+    });
+
     async function toggleScreen() {
+        // [Existing Screen Share Code Remains Unchanged]
         const btn = document.getElementById('shareBtn');
         if (!screenStream) {
             try {
@@ -236,12 +313,8 @@
                 });
                 document.getElementById('localVideo').srcObject = screenStream;
                 btn.classList.add('active');
-                
-                // Auto-pin the local screen share for convenience
-                togglePin('local-wrapper');
-
                 track.onended = () => toggleScreen(); 
-            } catch(e) { console.error(e); }
+            } catch(e) {}
         } else {
             const track = localStream.getVideoTracks()[0];
             Object.values(peers).forEach(p => {
@@ -252,72 +325,53 @@
             screenStream.getTracks().forEach(t => t.stop());
             screenStream = null;
             btn.classList.remove('active');
-            togglePin('local-wrapper'); // Unpin
         }
     }
 
-    function copyLink() {
-        // Modern approach (Requires HTTPS or localhost)
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(window.location.href).then(() => {
-                showCopiedState();
-            }).catch(err => console.error("Clipboard error:", err));
-        } else {
-            // Fallback for HTTP / local network testing
-            const tempInput = document.createElement("input");
-            tempInput.value = window.location.href;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand("copy");
-            document.body.removeChild(tempInput);
-            showCopiedState();
-        }
-    }
-
-    // Helper to make the button turn green temporarily
-    function showCopiedState() {
-        const btn = document.querySelector('#invite-popup button');
-        if (btn) {
-            btn.innerText = "Copied!";
-            btn.style.background = "#4CAF50"; // Success Green
-            btn.style.color = "white";
-            setTimeout(() => {
-                btn.innerText = "Copy Link";
-                btn.style.background = "var(--orange)";
-                btn.style.color = "black";
-            }, 2000);
-        }
-    }
-
-    // Standard Helpers
-    function toggleCam() {
-        const v = localStream.getVideoTracks()[0];
-        v.enabled = !v.enabled;
-        document.getElementById('local-wrapper').classList.toggle('cam-off', !v.enabled);
-        document.getElementById('camBtn').classList.toggle('active', !v.enabled);
-    }
-    function toggleMic() {
-        const a = localStream.getAudioTracks()[0];
-        a.enabled = !a.enabled;
-        document.getElementById('micBtn').classList.toggle('active', !a.enabled);
-    }
     function toggleInvite() { 
         const p = document.getElementById('invite-popup');
         p.style.display = p.style.display === 'block' ? 'none' : 'block';
     }
+
     function toggleChat() { document.getElementById('chat-sidebar').classList.toggle('open'); }
+
+    function copyLink() {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(window.location.href).then(showCopiedState);
+        } else {
+            const temp = document.createElement("input");
+            temp.value = window.location.href;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand("copy");
+            document.body.removeChild(temp);
+            showCopiedState();
+        }
+    }
+
+    function showCopiedState() {
+        const btn = document.getElementById('copyBtn');
+        btn.innerText = "Copied!";
+        btn.style.background = "#4CAF50"; 
+        btn.style.color = "white";
+        setTimeout(() => {
+            btn.innerText = "Copy Link";
+            btn.style.background = "var(--orange)";
+            btn.style.color = "black";
+        }, 2000);
+    }
+
     function sendChat() {
         const i = document.getElementById('chatIn');
         if (i.value.trim()) {
             socket.emit('chat-msg', { room, user: myName, msg: i.value });
+            const m = document.getElementById('chat-msgs');
+            m.innerHTML += `<div style="background: rgba(255,140,0,0.1); border: 1px solid rgba(255,140,0,0.3); padding: 10px 15px; border-radius: 12px; align-self: flex-end; max-width: 85%;"><b>You:</b><br>${i.value}</div>`;
+            m.scrollTop = m.scrollHeight;
             i.value = '';
         }
     }
-    socket.on('chat-msg', data => {
-        const m = document.getElementById('chat-msgs');
-        m.innerHTML += `<div><b>${data.user}:</b> ${data.msg}</div>`;
-        m.scrollTop = m.scrollHeight;
-    });
+
     setInterval(() => {
         document.getElementById('clock').innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     }, 1000);
