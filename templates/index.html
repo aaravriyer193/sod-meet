@@ -12,7 +12,6 @@
     <style>
         :root { --orange: #FF8C00; --bg: #0a0a0a; --panel: #1a1a1a; --red: #ea4335; }
         
-        /* Font Fix: Force forms to use Nunito */
         body, input, button { font-family: 'Nunito', sans-serif; margin: 0; }
         body { background: var(--bg); color: white; height: 100vh; overflow: hidden; }
 
@@ -20,56 +19,65 @@
         #name-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; align-items: center; justify-content: center; }
         .name-card { background: var(--panel); padding: 40px; border-radius: 24px; border: 1px solid var(--orange); text-align: center; width: 380px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .name-card img { width: 80px; margin-bottom: 20px; border-radius: 15px; }
-        
-        /* Input Alignment & Polish */
-        .name-card input { 
-            width: 100%; padding: 16px; margin: 20px 0; border-radius: 12px; 
-            border: 2px solid #333; background: #000; color: white; 
-            font-size: 1.1rem; text-align: center; outline: none; 
-            box-sizing: border-box; transition: 0.3s; font-weight: 600;
-        }
-        .name-card input:focus { border-color: var(--orange); box-shadow: 0 0 15px rgba(255,140,0,0.2); }
-        
-        .join-btn { background: var(--orange); color: black; border: none; padding: 15px; width: 100%; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1.1rem; transition: 0.2s; }
-        .join-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,140,0,0.3); }
+        .name-card input { width: 100%; padding: 16px; margin: 20px 0; border-radius: 12px; border: 2px solid #333; background: #000; color: white; font-size: 1.1rem; text-align: center; outline: none; box-sizing: border-box; }
+        .join-btn { background: var(--orange); color: black; border: none; padding: 15px; width: 100%; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
 
-        /* Video Grid */
-        #video-grid { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 15px; padding: 20px; height: calc(100vh - 90px); box-sizing: border-box; overflow-y: auto; }
-        .video-wrapper { position: relative; flex: 1 1 45%; min-width: 300px; max-width: 600px; aspect-ratio: 16/9; background: #111; border-radius: 16px; overflow: hidden; border: 2px solid transparent; }
-        .video-wrapper.active { border-color: var(--orange); }
+        /* Video Grid & Pin Mode */
+        #video-grid { 
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center; 
+            gap: 15px; padding: 20px; height: calc(100vh - 90px); 
+            box-sizing: border-box; transition: all 0.4s ease;
+        }
+
+        /* Logic for Pinning */
+        #video-grid.pin-active { align-items: flex-start; align-content: flex-start; }
+        
+        .video-wrapper { 
+            position: relative; flex: 1 1 45%; min-width: 300px; max-width: 800px; 
+            aspect-ratio: 16/9; background: #111; border-radius: 16px; 
+            overflow: hidden; border: 2px solid transparent; transition: all 0.4s ease;
+        }
+
+        /* When a video is pinned */
+        #video-grid.pin-active .video-wrapper:not(.pinned) {
+            flex: 0 0 240px; height: 135px; max-width: 240px;
+        }
+        #video-grid.pin-active .video-wrapper.pinned {
+            flex: 1 1 100%; max-width: 1200px; order: -1; /* Always first */
+        }
+
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
         
+        /* Action Buttons on Video (Pin/Unpin) */
+        .video-actions {
+            position: absolute; top: 10px; right: 10px; z-index: 20;
+            display: flex; gap: 8px; opacity: 0; transition: 0.2s;
+        }
+        .video-wrapper:hover .video-actions { opacity: 1; }
+        .pin-btn {
+            background: rgba(0,0,0,0.6); color: white; border: none; 
+            width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 18px;
+        }
+        .pin-btn.active { background: var(--orange); color: black; }
+
         /* Avatar Placeholder */
         .avatar-view { position: absolute; inset: 0; background: #222; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5; }
         .cam-off .avatar-view { display: flex; }
-        .initials { width: 80px; height: 80px; background: var(--orange); color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; margin-bottom: 10px; }
-        .name-tag { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; font-weight: 600; z-index: 10; border-left: 2px solid var(--orange); }
-
-        /* Invite Popup */
-        #invite-popup { position: fixed; left: 20px; bottom: 100px; width: 320px; background: white; color: #121212; padding: 25px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 500; display: none; }
-        #invite-popup h3 { margin-top: 0; color: #121212; font-size: 1.1rem; }
-        .link-box { background: #f1f3f4; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 0.9rem; word-break: break-all; margin: 15px 0; border: 1px solid #ddd; }
+        .initials { width: 80px; height: 80px; background: var(--orange); color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; }
+        .name-tag { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; z-index: 10; border-left: 2px solid var(--orange); }
 
         /* Controls Bar */
         #controls { position: fixed; bottom: 0; width: 100%; height: 80px; background: #111; display: flex; justify-content: space-between; align-items: center; padding: 0 30px; box-sizing: border-box; border-top: 1px solid #333; z-index: 100; }
         .ctrl-group { display: flex; gap: 15px; }
-        .circle-btn { width: 50px; height: 50px; border-radius: 50%; border: none; background: #2a2a2a; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; transition: 0.2s; }
-        .circle-btn:hover { background: #3a3a3a; transform: scale(1.05); }
+        .circle-btn { width: 50px; height: 50px; border-radius: 50%; border: none; background: #2a2a2a; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; }
         .circle-btn.red { background: var(--red); }
-        .circle-btn.red:hover { background: #ff5242; }
         .circle-btn.active { background: var(--orange); color: black; }
 
-        /* Chat Sidebar */
-        #chat-sidebar { position: fixed; top: 0; right: -360px; width: 350px; height: calc(100vh - 80px); background: var(--panel); border-left: 2px solid var(--orange); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; display: flex; flex-direction: column; }
-        #chat-sidebar.open { right: 0; box-shadow: -10px 0 30px rgba(0,0,0,0.5); }
-        #chat-msgs { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .msg-bubble { background: #2a2a2a; padding: 10px 15px; border-radius: 12px; align-self: flex-start; max-width: 85%; font-size: 0.9rem; }
-        .msg-bubble.me { background: rgba(255,140,0,0.1); border: 1px solid rgba(255,140,0,0.3); align-self: flex-end; }
-        .chat-input { padding: 20px; border-top: 1px solid #333; display: flex; gap: 10px; }
-        .chat-input input { flex: 1; background: #000; border: 1px solid #444; color: white; padding: 12px; border-radius: 20px; outline: none; }
-        .chat-input input:focus { border-color: var(--orange); }
-
-        #warning { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: var(--red); color: white; padding: 8px 20px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; display: none; z-index: 3000; box-shadow: 0 5px 15px rgba(234,67,53,0.4); }
+        /* Sidebar & Popups */
+        #chat-sidebar { position: fixed; top: 0; right: -360px; width: 350px; height: calc(100vh - 80px); background: var(--panel); border-left: 2px solid var(--orange); transition: 0.3s; z-index: 1000; display: flex; flex-direction: column; }
+        #chat-sidebar.open { right: 0; }
+        #invite-popup { position: fixed; left: 20px; bottom: 100px; width: 320px; background: white; color: #121212; padding: 25px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 500; display: none; }
     </style>
 </head>
 <body>
@@ -83,10 +91,11 @@
         </div>
     </div>
 
-    <div id="warning">⚠️ Large Meeting: Connection may lag with 4+ people.</div>
-
     <div id="video-grid">
         <div class="video-wrapper" id="local-wrapper">
+            <div class="video-actions">
+                <button class="pin-btn" onclick="togglePin('local-wrapper')"><ion-icon name="pin-outline"></ion-icon></button>
+            </div>
             <div class="avatar-view"><div class="initials" id="local-init">?</div></div>
             <div class="name-tag" id="local-tag">You</div>
             <video id="localVideo" autoplay playsinline muted></video>
@@ -94,34 +103,28 @@
     </div>
 
     <div id="invite-popup">
-        <span style="float:right; cursor:pointer; font-size: 1.2rem; color: #555;" onclick="toggleInvite()">×</span>
+        <span style="float:right; cursor:pointer;" onclick="toggleInvite()">×</span>
         <h3>Your meeting is ready</h3>
-        <p style="font-size: 0.85rem; color: #555; margin-bottom: 5px;">Share this link to invite others:</p>
-        <div class="link-box" id="meet-link"></div>
-        <button onclick="copyLink()" style="width:100%; padding:12px; background:var(--orange); border:none; border-radius:8px; cursor:pointer; font-weight:bold; color:black; font-size:1rem; transition:0.2s;">Copy Link</button>
+        <div id="meet-link" style="background:#f1f3f4; padding:10px; margin:10px 0; font-size:0.8rem; word-break:break-all; border-radius:5px;"></div>
+        <button onclick="copyLink()" style="width:100%; padding:10px; background:var(--orange); border:none; border-radius:6px; cursor:pointer; font-weight:bold; color:black;">Copy Link</button>
     </div>
 
     <div id="chat-sidebar">
-        <div style="padding: 20px; font-weight: bold; border-bottom: 1px solid #333; color: var(--orange); display:flex; justify-content:space-between;">
-            <span>In-call Messages</span>
-            <span style="cursor:pointer; color:white;" onclick="toggleChat()">×</span>
-        </div>
-        <div id="chat-msgs"></div>
-        <div class="chat-input">
-            <input type="text" id="chatIn" placeholder="Send a message..." onkeypress="if(event.key==='Enter') sendChat()">
+        <div style="padding: 20px; font-weight: bold; border-bottom: 1px solid #333; color: var(--orange);">In-call Messages</div>
+        <div id="chat-msgs" style="flex:1; padding:20px; overflow-y:auto;"></div>
+        <div style="padding:20px; border-top:1px solid #333; display:flex; gap:10px;">
+            <input type="text" id="chatIn" placeholder="Send a message..." onkeypress="if(event.key==='Enter') sendChat()" style="flex:1; background:#000; border:1px solid #444; color:white; padding:10px; border-radius:20px; outline:none;">
         </div>
     </div>
 
     <div id="controls">
-        <div style="color: #888; font-weight: bold; font-size: 1.1rem;">SODMeet | <span id="clock"></span></div>
-        
+        <div style="color: #888; font-weight: bold;">SODMeet | <span id="clock"></span></div>
         <div class="ctrl-group">
             <button class="circle-btn" id="micBtn" onclick="toggleMic()"><ion-icon name="mic-outline"></ion-icon></button>
             <button class="circle-btn" id="camBtn" onclick="toggleCam()"><ion-icon name="videocam-outline"></ion-icon></button>
             <button class="circle-btn" id="shareBtn" onclick="toggleScreen()"><ion-icon name="desktop-outline"></ion-icon></button>
             <button class="circle-btn red" onclick="window.location.href='/'" style="width:70px; border-radius:25px;"><ion-icon name="call-outline"></ion-icon></button>
         </div>
-
         <div class="ctrl-group">
             <button class="circle-btn" onclick="toggleInvite()"><ion-icon name="information-circle-outline"></ion-icon></button>
             <button class="circle-btn" onclick="toggleChat()"><ion-icon name="chatbubble-outline"></ion-icon></button>
@@ -145,26 +148,16 @@
         document.getElementById('local-init').innerText = myName[0].toUpperCase();
         document.getElementById('local-tag').innerText = myName + " (You)";
         
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            document.getElementById('localVideo').srcObject = localStream;
-            
-            socket.emit('join-room', { room, userId: myId, name: myName });
-            toggleInvite(); 
-        } catch(e) {
-            alert("Camera/Mic access denied. Please allow permissions to join.");
-        }
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('localVideo').srcObject = localStream;
+        socket.emit('join-room', { room, userId: myId, name: myName });
     }
 
-    socket.on('user-joined', data => {
-        console.log("Peer joined:", data.name);
-        initConnection(data.userId, data.name, true);
-    });
+    socket.on('user-joined', data => initConnection(data.userId, data.name, true));
 
     socket.on('signal', async data => {
         if (!peers[data.sender]) initConnection(data.sender, data.senderName || "Guest", false);
         const pc = peers[data.sender].pc;
-
         if (data.sdp) {
             await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
             if (data.sdp.type === 'offer') {
@@ -180,7 +173,6 @@
     function initConnection(partnerId, partnerName, isCaller) {
         const pc = new RTCPeerConnection(config);
         peers[partnerId] = { pc, name: partnerName };
-        
         localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
         pc.onicecandidate = e => {
@@ -189,18 +181,19 @@
 
         pc.ontrack = e => {
             if (document.getElementById(`vid-${partnerId}`)) return;
-            const grid = document.getElementById('video-grid');
             const wrap = document.createElement('div');
-            wrap.className = 'video-wrapper active';
+            wrap.className = 'video-wrapper';
             wrap.id = `wrap-${partnerId}`;
             wrap.innerHTML = `
+                <div class="video-actions">
+                    <button class="pin-btn" onclick="togglePin('wrap-${partnerId}')"><ion-icon name="pin-outline"></ion-icon></button>
+                </div>
                 <div class="avatar-view"><div class="initials">${partnerName[0].toUpperCase()}</div></div>
                 <div class="name-tag">${partnerName}</div>
                 <video id="vid-${partnerId}" autoplay playsinline></video>
             `;
-            grid.appendChild(wrap);
+            document.getElementById('video-grid').appendChild(wrap);
             document.getElementById(`vid-${partnerId}`).srcObject = e.streams[0];
-            updateGrid();
         };
 
         if (isCaller) {
@@ -211,21 +204,24 @@
         }
     }
 
-    function toggleCam() {
-        const v = localStream.getVideoTracks()[0];
-        v.enabled = !v.enabled;
-        document.getElementById('local-wrapper').classList.toggle('cam-off', !v.enabled);
-        const btn = document.getElementById('camBtn');
-        btn.classList.toggle('active', !v.enabled);
-        btn.innerHTML = v.enabled ? '<ion-icon name="videocam-outline"></ion-icon>' : '<ion-icon name="videocam-off-outline"></ion-icon>';
-    }
+    function togglePin(wrapperId) {
+        const grid = document.getElementById('video-grid');
+        const wrapper = document.getElementById(wrapperId);
+        const isPinned = wrapper.classList.contains('pinned');
 
-    function toggleMic() {
-        const a = localStream.getAudioTracks()[0];
-        a.enabled = !a.enabled;
-        const btn = document.getElementById('micBtn');
-        btn.classList.toggle('active', !a.enabled);
-        btn.innerHTML = a.enabled ? '<ion-icon name="mic-outline"></ion-icon>' : '<ion-icon name="mic-off-outline"></ion-icon>';
+        // Remove pin from everyone first
+        document.querySelectorAll('.video-wrapper').forEach(w => {
+            w.classList.remove('pinned');
+            w.querySelector('.pin-btn').classList.remove('active');
+        });
+
+        if (!isPinned) {
+            wrapper.classList.add('pinned');
+            wrapper.querySelector('.pin-btn').classList.add('active');
+            grid.classList.add('pin-active');
+        } else {
+            grid.classList.remove('pin-active');
+        }
     }
 
     async function toggleScreen() {
@@ -240,8 +236,12 @@
                 });
                 document.getElementById('localVideo').srcObject = screenStream;
                 btn.classList.add('active');
+                
+                // Auto-pin the local screen share for convenience
+                togglePin('local-wrapper');
+
                 track.onended = () => toggleScreen(); 
-            } catch(e) { console.error("Screen share canceled", e); }
+            } catch(e) { console.error(e); }
         } else {
             const track = localStream.getVideoTracks()[0];
             Object.values(peers).forEach(p => {
@@ -252,34 +252,60 @@
             screenStream.getTracks().forEach(t => t.stop());
             screenStream = null;
             btn.classList.remove('active');
+            togglePin('local-wrapper'); // Unpin
         }
     }
 
-    function updateGrid() {
-        const count = document.querySelectorAll('.video-wrapper').length;
-        document.getElementById('warning').style.display = count > 4 ? 'block' : 'none';
+    function copyLink() {
+        // Modern approach (Requires HTTPS or localhost)
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                showCopiedState();
+            }).catch(err => console.error("Clipboard error:", err));
+        } else {
+            // Fallback for HTTP / local network testing
+            const tempInput = document.createElement("input");
+            tempInput.value = window.location.href;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            showCopiedState();
+        }
     }
 
+    // Helper to make the button turn green temporarily
+    function showCopiedState() {
+        const btn = document.querySelector('#invite-popup button');
+        if (btn) {
+            btn.innerText = "Copied!";
+            btn.style.background = "#4CAF50"; // Success Green
+            btn.style.color = "white";
+            setTimeout(() => {
+                btn.innerText = "Copy Link";
+                btn.style.background = "var(--orange)";
+                btn.style.color = "black";
+            }, 2000);
+        }
+    }
+
+    // Standard Helpers
+    function toggleCam() {
+        const v = localStream.getVideoTracks()[0];
+        v.enabled = !v.enabled;
+        document.getElementById('local-wrapper').classList.toggle('cam-off', !v.enabled);
+        document.getElementById('camBtn').classList.toggle('active', !v.enabled);
+    }
+    function toggleMic() {
+        const a = localStream.getAudioTracks()[0];
+        a.enabled = !a.enabled;
+        document.getElementById('micBtn').classList.toggle('active', !a.enabled);
+    }
     function toggleInvite() { 
         const p = document.getElementById('invite-popup');
         p.style.display = p.style.display === 'block' ? 'none' : 'block';
     }
-
-    function toggleChat() { 
-        document.getElementById('chat-sidebar').classList.toggle('open'); 
-    }
-
-    function copyLink() {
-        navigator.clipboard.writeText(window.location.href);
-        const btn = document.querySelector('#invite-popup button');
-        btn.innerText = "Copied!";
-        btn.style.background = "#4CAF50";
-        setTimeout(() => {
-            btn.innerText = "Copy Link";
-            btn.style.background = "var(--orange)";
-        }, 2000);
-    }
-
+    function toggleChat() { document.getElementById('chat-sidebar').classList.toggle('open'); }
     function sendChat() {
         const i = document.getElementById('chatIn');
         if (i.value.trim()) {
@@ -287,19 +313,14 @@
             i.value = '';
         }
     }
-
     socket.on('chat-msg', data => {
         const m = document.getElementById('chat-msgs');
-        const isMe = data.user === myName;
-        m.innerHTML += `<div class="msg-bubble ${isMe ? 'me' : ''}"><b>${isMe ? 'You' : data.user}:</b><br>${data.msg}</div>`;
+        m.innerHTML += `<div><b>${data.user}:</b> ${data.msg}</div>`;
         m.scrollTop = m.scrollHeight;
-        if (!document.getElementById('chat-sidebar').classList.contains('open') && !isMe) toggleChat();
     });
-
     setInterval(() => {
-        const d = new Date();
-        document.getElementById('clock').innerText = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        document.getElementById('clock').innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     }, 1000);
 </script>
 </body>
-</html>w
+</html>
