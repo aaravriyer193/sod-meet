@@ -11,40 +11,43 @@
     
     <style>
         :root { --orange: #FF8C00; --bg: #0f0f11; --panel: #1a1a1e; --red: #ea4335; --green: #34a853; }
-        body, input, button, select { font-family: 'Nunito', sans-serif; margin: 0; }
+        body, input, button { font-family: 'Nunito', sans-serif; margin: 0; }
         body { background: var(--bg); color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-        #name-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+        /* Overlays */
+        .full-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         .name-card { background: var(--panel); padding: 30px; border-radius: 24px; border: 1px solid rgba(255,140,0,0.2); text-align: center; width: 320px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
         .name-card img { width: 60px; margin-bottom: 15px; border-radius: 12px; }
         .name-card input { width: 85%; padding: 12px 15px; margin: 15px 0; border-radius: 10px; border: 2px solid #333; background: #000; color: white; text-align: center; outline: none; transition: 0.3s; }
         .name-card input:focus { border-color: var(--orange); }
-        .join-btn { background: var(--orange); color: black; border: none; padding: 12px; width: 95%; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: var(--orange); color: black; border: none; padding: 12px; width: 95%; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
 
+        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,140,0,0.2); border-top: 4px solid var(--orange); border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Main Grid */
         #main-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px 20px 100px 20px; overflow: hidden; }
         #video-grid { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 15px; width: 100%; height: 100%; max-width: 1600px; transition: all 0.4s ease; }
         
-        /* The Speaking Glow Effect */
-        .video-wrapper { 
-            position: relative; flex: 1 1 300px; max-width: calc(33.333% - 15px); aspect-ratio: 16/9; 
-            background: #111; border-radius: 16px; overflow: hidden; 
-            border: 3px solid transparent; box-shadow: 0 10px 30px rgba(0,0,0,0.4); 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+        .video-wrapper { position: relative; flex: 1 1 300px; max-width: calc(33.333% - 15px); aspect-ratio: 16/9; background: #111; border-radius: 16px; overflow: hidden; border: 3px solid transparent; box-shadow: 0 10px 30px rgba(0,0,0,0.4); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .video-wrapper.speaking { border-color: var(--green); box-shadow: 0 0 25px rgba(52, 168, 83, 0.5); }
         .video-wrapper.pinned { flex: 10 1 80%; max-width: 1000px; max-height: 80vh; order: -1; border-color: var(--orange); }
         #video-grid.has-pinned .video-wrapper:not(.pinned) { flex: 0 1 200px; max-width: 250px; height: auto; aspect-ratio: 16/9; }
 
-        /* Video Flipping & Filtering Fixes */
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); transition: filter 0.3s; }
         video.is-screen { transform: scaleX(1) !important; object-fit: contain; background: #000; }
         
-        /* Custom Filters */
+        /* The Expanded Filters */
         .f-noir video { filter: grayscale(100%) contrast(120%); }
         .f-sepia video { filter: sepia(80%); }
         .f-cyber video { filter: hue-rotate(90deg) saturate(200%); }
         .f-blur video { filter: blur(4px); }
+        .f-invert video { filter: invert(100%); }
+        .f-warm video { filter: sepia(30%) saturate(150%) hue-rotate(-15deg); }
+        .f-cool video { filter: saturate(150%) hue-rotate(180deg); }
+        .f-neon video { filter: saturate(300%) contrast(150%) hue-rotate(45deg); }
 
+        /* Overlays & Badges */
         .avatar-view { position: absolute; inset: 0; background: #222; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5; }
         .cam-off .avatar-view { display: flex; }
         .initials { width: 70px; height: 70px; background: var(--orange); color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; }
@@ -59,13 +62,26 @@
         .icon-badge.red:hover { background: #ff5242; }
         .icon-badge span { font-size: 16px; }
 
-        /* Admin Controls */
+        /* Host Admin Controls Array */
         .admin-controls { display: none; position: absolute; top: 10px; left: 10px; gap: 5px; z-index: 20; opacity: 0; transition: 0.2s; }
         .video-wrapper:hover .admin-controls { opacity: 1; }
-        .admin-btn { background: rgba(234, 67, 53, 0.8); color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; backdrop-filter: blur(4px); }
-        .admin-btn:hover { background: var(--red); }
+        .admin-btn { background: rgba(0, 0, 0, 0.7); border: 1px solid #444; color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; backdrop-filter: blur(4px); transition: 0.2s; }
+        .admin-btn:hover { background: var(--orange); color: black; border-color: var(--orange); }
+        .admin-btn.red:hover { background: var(--red); color: white; border-color: var(--red); }
 
-        /* Controls */
+        /* Top Left Info & Host Badge */
+        #top-info { position: fixed; top: 30px; left: 30px; color: white; z-index: 90; font-weight: 600; display: flex; align-items: center; gap: 15px; }
+        #host-badge { background: var(--orange); color: black; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; display: none; font-weight: 800; letter-spacing: 1px; }
+
+        /* Host Notification Toasts */
+        #toast-container { position: fixed; top: 30px; right: 30px; z-index: 3000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: var(--panel); border-left: 4px solid var(--orange); padding: 15px 20px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 10px; min-width: 250px; }
+        .toast-actions { display: flex; gap: 10px; }
+        .toast-btn { flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .t-admit { background: var(--green); color: white; }
+        .t-deny { background: #333; color: white; }
+
+        /* Bottom Control Bar */
         #controls { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); background: rgba(26, 26, 30, 0.9); backdrop-filter: blur(10px); padding: 12px 25px; border-radius: 50px; display: flex; gap: 15px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 100; align-items: center; }
         .circle-btn { width: 48px; height: 48px; border-radius: 50%; border: none; background: #2e2e33; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .circle-btn:hover { background: #3e3e44; transform: scale(1.05); }
@@ -73,35 +89,50 @@
         .circle-btn.active { background: rgba(234, 67, 53, 0.2); color: var(--red); border: 1px solid var(--red); }
         .material-symbols-outlined { font-size: 24px; }
         
-        .filter-select { background: #2e2e33; color: white; border: none; padding: 10px; border-radius: 20px; outline: none; cursor: pointer; }
-
-        #top-info { position: fixed; bottom: 35px; left: 30px; color: white; z-index: 90; font-weight: 600; display: flex; align-items: center; gap: 15px; }
-        #host-badge { background: var(--orange); color: black; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; display: none; }
+        /* Sidebars (Chat & Appearance) */
+        .sidebar { position: fixed; top: 0; right: -360px; width: 350px; height: 100vh; background: rgba(26, 26, 30, 0.95); backdrop-filter: blur(15px); border-left: 1px solid #333; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; display: flex; flex-direction: column; }
+        .sidebar.open { right: 0; box-shadow: -10px 0 30px rgba(0,0,0,0.5); }
+        .side-head { padding: 25px 20px; font-weight: bold; font-size: 1.2rem; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
         
-        #chat-sidebar { position: fixed; top: 0; right: -360px; width: 350px; height: 100vh; background: rgba(26, 26, 30, 0.95); backdrop-filter: blur(15px); border-left: 1px solid #333; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; display: flex; flex-direction: column; }
-        #chat-sidebar.open { right: 0; }
         #chat-msgs { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
         .chat-input { padding: 20px; border-top: 1px solid #333; display: flex; gap: 10px; }
         .chat-input input { flex: 1; background: #111; border: 1px solid #444; color: white; padding: 10px 15px; border-radius: 20px; outline: none; }
+        
+        /* Appearance Grid */
+        #appearance-content { padding: 20px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .filter-card { background: #111; border: 2px solid #333; border-radius: 12px; padding: 15px; text-align: center; cursor: pointer; transition: 0.2s; font-weight: bold; }
+        .filter-card:hover, .filter-card.active { border-color: var(--orange); background: rgba(255,140,0,0.1); }
+        .filter-card span { display: block; font-size: 30px; margin-bottom: 10px; }
+
         #invite-popup { position: fixed; left: 30px; bottom: 90px; width: 300px; background: white; color: #121212; padding: 20px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); z-index: 500; display: none; }
     </style>
 </head>
 <body>
 
-    <div id="name-overlay">
+    <div id="name-overlay" class="full-overlay">
         <div class="name-card">
             <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
             <h2>Who's joining?</h2>
-            <input type="text" id="username" placeholder="Enter name..." maxlength="15" autofocus onkeypress="if(event.key==='Enter') joinRoom()">
-            <button class="join-btn" onclick="joinRoom()">Join Now</button>
+            <input type="text" id="username" placeholder="Enter name..." maxlength="15" autofocus onkeypress="if(event.key==='Enter') requestJoin()">
+            <button class="btn-primary" onclick="requestJoin()">Ask to Join</button>
         </div>
     </div>
 
+    <div id="waiting-overlay" class="full-overlay" style="display: none;">
+        <div class="name-card" style="background: transparent; border: none; box-shadow: none;">
+            <div class="spinner"></div>
+            <h2 style="margin-bottom: 10px;">Waiting Room</h2>
+            <p style="color: #aaa;">Waiting for the host to let you in...</p>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
     <div id="top-info">
-        <span id="clock"></span>
-        <span style="color: #666;">|</span>
-        <span style="color: #aaa; font-size: 0.9rem;">{{ room_id }}</span>
         <span id="host-badge">HOST</span>
+        <span style="color: #aaa; font-size: 0.9rem;">{{ room_id }}</span>
+        <span style="color: #666;">|</span>
+        <span id="clock"></span>
     </div>
 
     <div id="main-stage">
@@ -120,36 +151,44 @@
         </div>
     </div>
 
-    <div id="invite-popup">
-        <span style="float:right; cursor:pointer;" onclick="toggleInvite()">×</span>
-        <h3>Invite others</h3>
-        <div id="meet-link" style="background:#f1f3f4; padding:10px; border-radius:8px; font-size:0.8rem; margin:10px 0;"></div>
-        <button onclick="copyLink()" style="width:100%; padding:10px; background:var(--orange); border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Copy Link</button>
-    </div>
-
-    <div id="chat-sidebar">
-        <div style="padding:20px; font-weight:bold; border-bottom:1px solid #333; display: flex; justify-content: space-between; align-items: center;">
-            Messages <span class="material-symbols-outlined" style="cursor:pointer; color:#aaa; font-size: 20px;" onclick="toggleChat()">close</span>
+    <div id="chat-sidebar" class="sidebar">
+        <div class="side-head">
+            Messages <span class="material-symbols-outlined" style="cursor:pointer; color:#aaa;" onclick="toggleSidebar('chat-sidebar')">close</span>
         </div>
         <div id="chat-msgs"></div>
         <div class="chat-input"><input type="text" id="chatIn" placeholder="Type a message..." onkeypress="if(event.key==='Enter') sendChat()"></div>
+    </div>
+
+    <div id="appearance-sidebar" class="sidebar">
+        <div class="side-head">
+            Filters <span class="material-symbols-outlined" style="cursor:pointer; color:#aaa;" onclick="toggleSidebar('appearance-sidebar')">close</span>
+        </div>
+        <div id="appearance-content">
+            <div class="filter-card active" onclick="applyFilter('none', this)"><span class="material-symbols-outlined">block</span>Normal</div>
+            <div class="filter-card" onclick="applyFilter('f-noir', this)"><span class="material-symbols-outlined">monochrome_photos</span>Noir</div>
+            <div class="filter-card" onclick="applyFilter('f-sepia', this)"><span class="material-symbols-outlined">filter_vintage</span>Sepia</div>
+            <div class="filter-card" onclick="applyFilter('f-cyber', this)"><span class="material-symbols-outlined">memory</span>Cyber</div>
+            <div class="filter-card" onclick="applyFilter('f-warm', this)"><span class="material-symbols-outlined">wb_sunny</span>Warm</div>
+            <div class="filter-card" onclick="applyFilter('f-cool', this)"><span class="material-symbols-outlined">ac_unit</span>Cool</div>
+            <div class="filter-card" onclick="applyFilter('f-neon', this)"><span class="material-symbols-outlined">lightbulb</span>Neon</div>
+            <div class="filter-card" onclick="applyFilter('f-blur', this)"><span class="material-symbols-outlined">blur_on</span>Blur</div>
+        </div>
+    </div>
+
+    <div id="invite-popup">
+        <span style="float:right; cursor:pointer;" onclick="toggleInvite()">×</span>
+        <h3>Invite others</h3>
+        <div id="meet-link" style="background:#f1f3f4; padding:10px; border-radius:8px; font-size:0.8rem; margin:10px 0; word-break: break-all;"></div>
+        <button onclick="copyLink()" style="width:100%; padding:10px; background:var(--orange); border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Copy Link</button>
     </div>
 
     <div id="controls">
         <button class="circle-btn" id="micBtn" onclick="toggleMic()"><span class="material-symbols-outlined">mic</span></button>
         <button class="circle-btn" id="camBtn" onclick="toggleCam()"><span class="material-symbols-outlined">videocam</span></button>
         <button class="circle-btn" id="shareBtn" onclick="toggleScreen()"><span class="material-symbols-outlined">present_to_all</span></button>
-        
-        <select class="filter-select" id="filterSelect" onchange="applyFilter()">
-            <option value="none">Normal</option>
-            <option value="f-noir">Noir</option>
-            <option value="f-sepia">Sepia</option>
-            <option value="f-cyber">Cyber</option>
-            <option value="f-blur">Blur</option>
-        </select>
-
+        <button class="circle-btn" onclick="toggleSidebar('appearance-sidebar')"><span class="material-symbols-outlined">palette</span></button>
         <button class="circle-btn" onclick="toggleInvite()"><span class="material-symbols-outlined">person_add</span></button>
-        <button class="circle-btn" onclick="toggleChat()"><span class="material-symbols-outlined">chat</span></button>
+        <button class="circle-btn" onclick="toggleSidebar('chat-sidebar')"><span class="material-symbols-outlined">chat</span></button>
         <button class="circle-btn red" onclick="window.location.href='/'" style="width: 65px; border-radius: 25px;"><span class="material-symbols-outlined">call_end</span></button>
     </div>
 
@@ -161,47 +200,104 @@
     let localStream, screenStream;
     let peers = {}; 
     const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-
-    // Audio Context Setup for Speaking Glow
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     document.getElementById('meet-link').innerText = window.location.href;
 
-    socket.on('room-joined', data => {
-        isHost = data.isHost;
-        if (isHost) document.getElementById('host-badge').style.display = 'inline-block';
-    });
-
-    // Admin Action Listener
-    socket.on('admin-action', data => {
-        if (data.action === 'kick') {
-            alert("You have been removed by the meeting host.");
-            window.location.href = '/';
-        } else if (data.action === 'mute') {
-            const a = localStream.getAudioTracks()[0];
-            if (a.enabled) toggleMic(); // Forces mute
-            alert("The host has muted your microphone.");
-        }
-    });
-
-    async function joinRoom() {
+    // --- STEP 1: REQUEST TO JOIN ---
+    async function requestJoin() {
         myName = document.getElementById('username').value.trim() || "Guest";
         document.getElementById('name-overlay').style.display = 'none';
-        document.getElementById('local-init').innerText = myName[0].toUpperCase();
-        document.getElementById('local-tag').innerText = myName + " (You)";
         
         try {
+            // Get camera ready while we wait
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             document.getElementById('localVideo').srcObject = localStream;
-            socket.emit('join-room', { room, userId: myId, name: myName });
+            document.getElementById('local-init').innerText = myName[0].toUpperCase();
             
-            // Start listening to our own mic for the glow effect
-            monitorSpeech(localStream, 'local-wrapper');
+            // Go to waiting room UI
+            document.getElementById('waiting-overlay').style.display = 'flex';
+            
+            // Ask server/host for permission
+            socket.emit('request-join', { room, userId: myId, name: myName });
         } catch(e) { alert("Camera access required."); }
     }
 
-    socket.on('user-joined', data => initConnection(data.userId, data.name, true));
+    // --- STEP 2: HOST RECEIVES REQUEST ---
+    socket.on('join-request', data => {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.id = `req-${data.userId}`;
+        toast.innerHTML = `
+            <div><b>${data.name}</b> wants to join the meeting.</div>
+            <div class="toast-actions">
+                <button class="toast-btn t-admit" onclick="handleRequest('${data.userId}', true)">Admit</button>
+                <button class="toast-btn t-deny" onclick="handleRequest('${data.userId}', false)">Deny</button>
+            </div>
+        `;
+        document.getElementById('toast-container').appendChild(toast);
+    });
 
+    function handleRequest(targetId, admit) {
+        document.getElementById(`req-${targetId}`).remove();
+        if (admit) socket.emit('admit-user', { target: targetId });
+        else socket.emit('deny-user', { target: targetId });
+    }
+
+    // --- STEP 3: ADMISSION GRANTED OR DENIED ---
+    socket.on('join-denied', () => {
+        alert("The host declined your request to join.");
+        window.location.href = '/';
+    });
+
+    socket.on('join-accepted', data => {
+        isHost = data.isHost;
+        document.getElementById('waiting-overlay').style.display = 'none';
+        
+        if (isHost) {
+            document.getElementById('host-badge').style.display = 'inline-block';
+            setTimeout(() => toggleInvite(), 500); // Only auto-show invite to host
+        }
+        
+        // Officially enter the room
+        socket.emit('join-room', { room, userId: myId, name: myName });
+        monitorSpeech(localStream, 'local-wrapper');
+    });
+
+    // --- ADMIN ACTIONS LOGIC ---
+    socket.on('admin-action', data => {
+        if (data.action === 'kick') {
+            alert("You have been removed by the host.");
+            window.location.href = '/';
+        } else if (data.action === 'mute') {
+            const a = localStream.getAudioTracks()[0];
+            if (a.enabled) forceSetMic(false); 
+        } else if (data.action === 'cam-off') {
+            const v = localStream.getVideoTracks()[0];
+            if (v.enabled) forceSetCam(false);
+        }
+    });
+
+    function forceSetMic(state) {
+        localStream.getAudioTracks()[0].enabled = state;
+        document.getElementById('local-mic-badge').style.display = state ? 'none' : 'flex';
+        const btn = document.getElementById('micBtn');
+        btn.classList.toggle('active', !state);
+        btn.innerHTML = state ? '<span class="material-symbols-outlined">mic</span>' : '<span class="material-symbols-outlined">mic_off</span>';
+        socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'mic', state: state });
+    }
+
+    function forceSetCam(state) {
+        localStream.getVideoTracks()[0].enabled = state;
+        document.getElementById('local-wrapper').classList.toggle('cam-off', !state);
+        const btn = document.getElementById('camBtn');
+        btn.classList.toggle('active', !state);
+        btn.innerHTML = state ? '<span class="material-symbols-outlined">videocam</span>' : '<span class="material-symbols-outlined">videocam_off</span>';
+        socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'cam', state: state });
+    }
+
+    // --- WEBRTC CONNECTION LOGIC ---
+    socket.on('user-joined', data => initConnection(data.userId, data.name, true));
     socket.on('signal', async data => {
         if (!peers[data.sender]) initConnection(data.sender, data.senderName || "Guest", false);
         const pc = peers[data.sender].pc;
@@ -239,13 +335,14 @@
             wrap.className = 'video-wrapper';
             wrap.id = `wrap-${partnerId}`;
             
-            // Build Admin Buttons if I am the host
+            // Build Admin Buttons if Host
             let adminHTML = '';
             if (isHost) {
                 adminHTML = `
                 <div class="admin-controls">
-                    <button class="admin-btn" onclick="socket.emit('admin-action', {target: '${partnerId}', action: 'mute'})">Mute</button>
-                    <button class="admin-btn" onclick="socket.emit('admin-action', {target: '${partnerId}', action: 'kick'})">Kick</button>
+                    <button class="admin-btn" onclick="socket.emit('admin-action', {target: '${partnerId}', action: 'mute'})">Mute Mic</button>
+                    <button class="admin-btn" onclick="socket.emit('admin-action', {target: '${partnerId}', action: 'cam-off'})">Turn Off Cam</button>
+                    <button class="admin-btn red" onclick="socket.emit('admin-action', {target: '${partnerId}', action: 'kick'})">Kick</button>
                 </div>`;
             }
 
@@ -264,9 +361,15 @@
             document.getElementById('video-grid').appendChild(wrap);
             document.getElementById(`vid-${partnerId}`).srcObject = e.streams[0];
             
-            // Monitor their stream for the speaking glow
             monitorSpeech(e.streams[0], `wrap-${partnerId}`);
-            syncMyStateToRoom();
+            
+            // Sync current states
+            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'cam', state: localStream.getVideoTracks()[0].enabled });
+            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'mic', state: localStream.getAudioTracks()[0].enabled });
+            
+            // Sync active filter
+            const activeFilter = document.querySelector('.filter-card.active').getAttribute('onclick').match(/'([^']+)'/)[1];
+            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: activeFilter });
         };
 
         if (isCaller) {
@@ -277,69 +380,54 @@
         }
     }
 
-    // --- Volume Analyzer for Glowing Box ---
+    // --- SIDEBARS & FILTERS ---
+    function toggleSidebar(id) {
+        // Close all others first
+        document.querySelectorAll('.sidebar').forEach(el => {
+            if (el.id !== id) el.classList.remove('open');
+        });
+        document.getElementById(id).classList.toggle('open');
+    }
+
+    function applyFilter(filterClass, el) {
+        // Update UI highlight
+        document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+
+        // Apply to self
+        const wrapper = document.getElementById('local-wrapper');
+        wrapper.className = wrapper.className.replace(/\bf-\S+/g, '');
+        if (filterClass !== 'none') wrapper.classList.add(filterClass);
+        
+        // Broadcast to room
+        socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: filterClass });
+    }
+
+    // --- UTILS ---
+    function toggleCam() { forceSetCam(!localStream.getVideoTracks()[0].enabled); }
+    function toggleMic() { forceSetMic(!localStream.getAudioTracks()[0].enabled); }
+
     function monitorSpeech(stream, wrapperId) {
         try {
-            // Some browsers need user interaction before AudioContext runs
             if(audioCtx.state === 'suspended') audioCtx.resume();
-            
             const source = audioCtx.createMediaStreamSource(stream);
             const analyser = audioCtx.createAnalyser();
             analyser.fftSize = 256;
             source.connect(analyser);
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
             
-            function checkVolume() {
+            function checkVol() {
                 const wrapper = document.getElementById(wrapperId);
-                if(!wrapper) return; // Stop if they left
-
+                if(!wrapper) return;
                 analyser.getByteFrequencyData(dataArray);
                 let sum = 0;
                 for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
-                let avg = sum / dataArray.length;
-                
-                // Volume threshold (adjust if too sensitive)
-                if (avg > 15) wrapper.classList.add('speaking');
+                if ((sum / dataArray.length) > 15) wrapper.classList.add('speaking');
                 else wrapper.classList.remove('speaking');
-                
-                requestAnimationFrame(checkVolume);
+                requestAnimationFrame(checkVol);
             }
-            checkVolume();
-        } catch(e) { console.log("Audio analyzer skipped for stream."); }
-    }
-
-    // --- Filtering Logic ---
-    function applyFilter() {
-        const val = document.getElementById('filterSelect').value;
-        const wrapper = document.getElementById('local-wrapper');
-        
-        // Remove old filters
-        wrapper.className = wrapper.className.replace(/\bf-\S+/g, '');
-        if (val !== 'none') wrapper.classList.add(val);
-        
-        // Tell everyone else to apply this CSS class to my video box!
-        socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: val });
-    }
-
-    // --- Media Controls ---
-    function syncMyStateToRoom() {
-        socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'cam', state: localStream.getVideoTracks()[0].enabled });
-        socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'mic', state: localStream.getAudioTracks()[0].enabled });
-        applyFilter(); // Sync filter on join
-    }
-
-    function toggleCam() {
-        const v = localStream.getVideoTracks()[0]; v.enabled = !v.enabled;
-        document.getElementById('local-wrapper').classList.toggle('cam-off', !v.enabled);
-        document.getElementById('camBtn').classList.toggle('active', !v.enabled);
-        socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'cam', state: v.enabled });
-    }
-
-    function toggleMic() {
-        const a = localStream.getAudioTracks()[0]; a.enabled = !a.enabled;
-        document.getElementById('local-mic-badge').style.display = a.enabled ? 'none' : 'flex';
-        document.getElementById('micBtn').classList.toggle('active', !a.enabled);
-        socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'mic', state: a.enabled });
+            checkVol();
+        } catch(e) {}
     }
 
     socket.on('chat-msg', data => {
@@ -352,7 +440,7 @@
                     if(b) b.style.display = data.state ? 'none' : 'flex';
                 }
                 else if (data.type === 'filter') {
-                    w.className = w.className.replace(/\bf-\S+/g, ''); // clear old
+                    w.className = w.className.replace(/\bf-\S+/g, ''); 
                     if (data.state !== 'none') w.classList.add(data.state);
                 }
             }
@@ -362,35 +450,28 @@
         const timeNow = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         m.innerHTML += `<div style="background:${data.user===myName?'rgba(255,140,0,0.1)':'#2a2a2a'}; padding:8px 12px; border-radius:10px; margin-bottom:5px;"><b>${data.user}</b> <span style="font-size: 0.75rem; color: #888; margin-left: 5px;">${timeNow}</span><br> ${data.msg}</div>`;
         m.scrollTop = m.scrollHeight;
+        
+        // Auto-open chat
+        if (!document.getElementById('chat-sidebar').classList.contains('open') && data.user !== myName) toggleSidebar('chat-sidebar');
     });
 
-    // --- Screen Share Flipping Fix ---
-    async function toggleScreen() {
+    // Screen Share, Pinning, Links...
+    async function toggleScreen() { /* Unchanged Screen Share logic */
         if (!screenStream) {
             try {
                 screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
                 const track = screenStream.getVideoTracks()[0];
-                Object.values(peers).forEach(p => {
-                    const sender = p.pc.getSenders().find(s => s.track.kind === 'video');
-                    if(sender) sender.replaceTrack(track);
-                });
-                const vid = document.getElementById('localVideo');
-                vid.srcObject = screenStream;
-                vid.classList.add('is-screen'); // Fixes the mirroring!
-                
+                Object.values(peers).forEach(p => { const s = p.pc.getSenders().find(s => s.track.kind === 'video'); if(s) s.replaceTrack(track); });
+                document.getElementById('localVideo').srcObject = screenStream;
+                document.getElementById('localVideo').classList.add('is-screen');
                 document.getElementById('shareBtn').classList.add('active');
                 track.onended = () => toggleScreen();
             } catch(e) {}
         } else {
             const track = localStream.getVideoTracks()[0];
-            Object.values(peers).forEach(p => {
-                const sender = p.pc.getSenders().find(s => s.track.kind === 'video');
-                if(sender) sender.replaceTrack(track);
-            });
-            const vid = document.getElementById('localVideo');
-            vid.srcObject = localStream;
-            vid.classList.remove('is-screen'); // Re-adds the mirroring
-            
+            Object.values(peers).forEach(p => { const s = p.pc.getSenders().find(s => s.track.kind === 'video'); if(s) s.replaceTrack(track); });
+            document.getElementById('localVideo').srcObject = localStream;
+            document.getElementById('localVideo').classList.remove('is-screen');
             screenStream.getTracks().forEach(t => t.stop());
             screenStream = null;
             document.getElementById('shareBtn').classList.remove('active');
@@ -400,26 +481,13 @@
     function togglePin(wrapperId) {
         const grid = document.getElementById('video-grid');
         const target = document.getElementById(wrapperId);
-        if (target.classList.contains('pinned')) {
-            target.classList.remove('pinned');
-            grid.classList.remove('has-pinned');
-        } else {
-            document.querySelectorAll('.video-wrapper').forEach(w => w.classList.remove('pinned'));
-            target.classList.add('pinned');
-            grid.classList.add('has-pinned');
-        }
+        if (target.classList.contains('pinned')) { target.classList.remove('pinned'); grid.classList.remove('has-pinned'); } 
+        else { document.querySelectorAll('.video-wrapper').forEach(w => w.classList.remove('pinned')); target.classList.add('pinned'); grid.classList.add('has-pinned'); }
     }
 
     function toggleInvite() { const p = document.getElementById('invite-popup'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; }
-    function toggleChat() { document.getElementById('chat-sidebar').classList.toggle('open'); }
     function copyLink() { navigator.clipboard.writeText(window.location.href); alert("Link copied!"); }
-    function sendChat() {
-        const i = document.getElementById('chatIn');
-        if (i.value.trim()) {
-            socket.emit('chat-msg', { room, user: myName, msg: i.value });
-            i.value = '';
-        }
-    }
+    function sendChat() { const i = document.getElementById('chatIn'); if (i.value.trim()) { socket.emit('chat-msg', { room, user: myName, msg: i.value }); i.value = ''; } }
     setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); }, 1000);
 </script>
 </body>
