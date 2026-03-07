@@ -7,24 +7,30 @@
     <link rel="icon" href="{{ url_for('static', filename='logo.png') }}">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/deepar/js/deepar.js"></script>
     
     <style>
         :root { --orange: #FF8C00; --bg: #0f0f11; --panel: #1a1a1e; --red: #ea4335; --green: #34a853; }
         body, input, button { font-family: 'Nunito', sans-serif; margin: 0; }
         body { background: var(--bg); color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
+        /* Overlays & Cards */
         .full-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         .name-card { background: var(--panel); padding: 30px; border-radius: 24px; border: 1px solid rgba(255,140,0,0.2); text-align: center; width: 320px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
         .name-card img { width: 60px; margin-bottom: 15px; border-radius: 12px; }
-        .name-card input { width: 100%; padding: 12px 15px; margin: 15px 0; border-radius: 10px; border: 2px solid #333; background: #000; color: white; text-align: center; outline: none; transition: 0.3s; box-sizing: border-box; }
-        .name-card input:focus { border-color: var(--orange); }
+        .name-card input { width: 100%; padding: 12px 15px; margin: 15px 0; border-radius: 10px; border: 2px solid var(--green); background: #111; color: #fff; text-align: center; outline: none; transition: 0.3s; box-sizing: border-box; font-weight: bold; cursor: not-allowed; }
         .btn-primary { background: var(--orange); color: black; border: none; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .auth-badge { background: rgba(52, 168, 83, 0.2); color: var(--green); padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; display: inline-block; border: 1px solid var(--green); }
+        
+        /* Auth Badge (Always visible now) */
+        .auth-badge { background: rgba(52, 168, 83, 0.15); color: var(--green); padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; margin-bottom: 10px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--green); }
+        .auth-badge span { font-size: 16px; }
 
         .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,140,0,0.2); border-top: 4px solid var(--orange); border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+        /* Main Grid */
         #main-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px 20px 100px 20px; overflow: hidden; }
         #video-grid { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 15px; width: 100%; height: 100%; max-width: 1600px; transition: all 0.4s ease; }
         
@@ -33,47 +39,49 @@
         .video-wrapper.pinned { flex: 0 0 100%; max-width: 100%; height: 65vh; max-height: 65vh; order: -1; border-color: var(--orange); margin-bottom: 10px; }
         #video-grid.has-pinned .video-wrapper:not(.pinned) { flex: 0 1 200px; max-width: 250px; height: auto; aspect-ratio: 16/9; }
 
+        /* Video Core */
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); transition: filter 0.3s; }
         video.is-screen { transform: scale(-1, -1) !important; object-fit: contain !important; background: #000; position: relative; z-index: 10; }
         
-        /* THE 36 CINEMATIC FILTERS */
-        .f-noir video { filter: grayscale(100%) contrast(120%); }
-        .f-sepia video { filter: sepia(100%); }
-        .f-cyber video { filter: hue-rotate(90deg) saturate(200%); }
-        .f-blur video { filter: blur(4px); }
+        /* Native Cinematic & SVG Shader Filters */
+        .f-noir video { filter: grayscale(100%) contrast(150%); }
+        .f-sepia video { filter: sepia(100%) contrast(110%); }
+        .f-cyber video { filter: hue-rotate(90deg) saturate(250%) contrast(120%); }
+        .f-blur video { filter: blur(8px); }
         .f-invert video { filter: invert(100%); }
-        .f-warm video { filter: sepia(30%) saturate(150%) hue-rotate(-15deg); }
+        .f-warm video { filter: sepia(40%) saturate(150%) hue-rotate(-15deg); }
         .f-cool video { filter: saturate(150%) hue-rotate(180deg); }
-        .f-neon video { filter: saturate(300%) contrast(150%) hue-rotate(45deg); }
-        .f-matrix video { filter: sepia(100%) hue-rotate(80deg) saturate(300%) contrast(150%) brightness(80%); }
-        .f-xray video { filter: invert(100%) grayscale(100%) contrast(200%); }
-        .f-infrared video { filter: invert(100%) hue-rotate(180deg) saturate(300%); }
+        .f-neon video { filter: saturate(400%) contrast(150%) hue-rotate(45deg); }
         .f-vintage video { filter: sepia(80%) contrast(120%) brightness(90%); }
         .f-ocean video { filter: hue-rotate(180deg) saturate(200%) brightness(80%); }
         .f-lava video { filter: hue-rotate(-45deg) saturate(300%) contrast(150%); }
         .f-synth video { filter: hue-rotate(250deg) saturate(400%) contrast(120%); }
-        .f-vapor video { filter: hue-rotate(300deg) saturate(300%) contrast(150%); }
-        .f-golden video { filter: sepia(40%) saturate(150%) contrast(110%) brightness(110%); }
-        .f-ghost video { filter: invert(100%) hue-rotate(90deg) opacity(80%); }
-        .f-night video { filter: sepia(100%) hue-rotate(60deg) saturate(500%) contrast(200%) brightness(120%); }
-        .f-highcon video { filter: contrast(250%); }
-        .f-washed video { filter: saturate(30%) brightness(120%); }
-        .f-alien video { filter: hue-rotate(120deg) saturate(250%) invert(20%); }
-        .f-frost video { filter: hue-rotate(200deg) saturate(150%) brightness(130%) opacity(90%); }
-        .f-blood video { filter: sepia(100%) hue-rotate(-50deg) saturate(500%) contrast(150%); }
+        .f-haze video { filter: opacity(70%) blur(2px) contrast(80%) brightness(140%); }
+        .f-ghost video { filter: invert(100%) hue-rotate(90deg) opacity(70%); }
         .f-toxic video { filter: hue-rotate(70deg) saturate(400%) contrast(180%); }
-        .f-dream video { filter: blur(2px) sepia(20%) brightness(120%) contrast(90%); }
-        .f-poster video { filter: contrast(180%) saturate(200%); }
-        .f-noir-high video { filter: grayscale(100%) contrast(300%); }
-        .f-emerald video { filter: sepia(50%) hue-rotate(20deg) saturate(200%) brightness(110%); }
+        .f-emerald video { filter: sepia(50%) hue-rotate(20deg) saturate(300%) brightness(110%); }
         .f-sapphire video { filter: hue-rotate(140deg) saturate(300%) contrast(120%); }
         .f-amethyst video { filter: hue-rotate(220deg) saturate(200%) brightness(90%); }
-        .f-ruby video { filter: hue-rotate(280deg) saturate(250%) contrast(110%); }
-        .f-glitch1 video { filter: invert(20%) hue-rotate(45deg) saturate(400%); }
-        .f-glitch2 video { filter: invert(80%) hue-rotate(180deg) contrast(300%); }
-        .f-solarize video { filter: contrast(200%) invert(30%) sepia(50%); }
-        .f-haze video { filter: opacity(70%) blur(1px) contrast(80%) brightness(140%); }
+        .f-ruby video { filter: hue-rotate(280deg) saturate(300%) contrast(110%); }
+        .f-highcon video { filter: contrast(300%) saturate(150%); }
+        .f-washed video { filter: saturate(20%) brightness(130%) contrast(80%); }
+        
+        .f-thermal video { filter: url(#svg-thermal); }
+        .f-matrix video { filter: url(#svg-matrix); }
+        .f-xray video { filter: url(#svg-xray); }
+        .f-comic video { filter: url(#svg-comic); }
+        .f-trippy video { filter: url(#svg-trippy); }
+        .f-edge video { filter: url(#svg-edge); }
+        .f-night video { filter: url(#svg-nightvision); }
+        .f-alien video { filter: url(#svg-alien); }
+        .f-duotone-red video { filter: url(#svg-duotone-red); }
+        .f-duotone-blue video { filter: url(#svg-duotone-blue); }
+        .f-glitch video { filter: url(#svg-glitch); }
+        .f-emboss video { filter: url(#svg-emboss); }
+        .f-poster video { filter: url(#svg-posterize); }
+        .f-psychedelic video { filter: url(#svg-psychedelic); }
 
+        /* Overlays & Badges */
         .avatar-view { position: absolute; inset: 0; background: #222; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5; }
         .cam-off .avatar-view { display: flex; }
         .initials { width: 70px; height: 70px; background: var(--orange); color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; }
@@ -86,6 +94,7 @@
         .icon-badge.red { background: rgba(234, 67, 53, 0.9); color: white; }
         .icon-badge.red:hover { background: #ff5242; }
 
+        /* 3-Dot Host Menu */
         .host-menu-container { position: absolute; top: 10px; right: 10px; z-index: 20; }
         .host-menu-btn { background: rgba(0,0,0,0.6); color: white; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(4px); transition: 0.2s; }
         .host-menu-btn:hover { background: rgba(0,0,0,0.8); color: var(--orange); }
@@ -95,6 +104,7 @@
         .dropdown-item:hover { background: #2a2a2a; color: var(--orange); }
         .dropdown-item.red:hover { color: var(--red); }
 
+        /* Notification Toasts */
         #toast-container { position: fixed; top: 30px; right: 30px; z-index: 3000; display: flex; flex-direction: column; gap: 10px; }
         .toast { background: var(--panel); border-left: 4px solid var(--orange); padding: 15px 20px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 10px; min-width: 250px; }
         .toast-actions { display: flex; gap: 10px; }
@@ -102,6 +112,7 @@
         .t-admit { background: var(--green); color: white; }
         .t-deny { background: #333; color: white; }
 
+        /* Controls */
         #bottom-info { position: fixed; bottom: 35px; left: 30px; color: white; z-index: 90; font-weight: 600; display: flex; align-items: center; gap: 15px; }
         #host-badge { background: var(--orange); color: black; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; display: none; font-weight: 800; letter-spacing: 1px; }
 
@@ -111,6 +122,7 @@
         .circle-btn.red { background: var(--red); }
         .circle-btn.active { background: rgba(234, 67, 53, 0.2); color: var(--red); border: 1px solid var(--red); }
         
+        /* Sidebars */
         .sidebar { position: fixed; top: 0; right: -360px; width: 350px; height: 100vh; background: rgba(26, 26, 30, 0.95); backdrop-filter: blur(15px); border-left: 1px solid #333; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; display: flex; flex-direction: column; }
         .sidebar.open { right: 0; box-shadow: -10px 0 30px rgba(0,0,0,0.5); }
         .side-head { padding: 25px 20px; font-weight: bold; font-size: 1.2rem; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
@@ -121,6 +133,7 @@
         
         /* Scrollable Filters Grid */
         #appearance-content { padding: 20px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-height: calc(100vh - 80px); }
+        .filter-header { font-size: 0.9rem; color: var(--orange); margin: 15px 0 10px 0; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; grid-column: span 2;}
         .filter-card { background: #111; border: 2px solid #333; border-radius: 12px; padding: 10px; text-align: center; cursor: pointer; transition: 0.2s; font-weight: bold; font-size: 0.85rem; }
         .filter-card:hover, .filter-card.active { border-color: var(--orange); background: rgba(255,140,0,0.1); }
 
@@ -145,15 +158,32 @@
 </head>
 <body>
 
+    <div id="deepar-canvas-container" style="width: 640px; height: 480px; position: absolute; visibility: hidden; pointer-events: none; z-index: -1;"></div>
+
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+        <filter id="svg-thermal"><feColorMatrix type="matrix" values="0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0 0 0 1 0" result="gray"/><feComponentTransfer><feFuncR type="table" tableValues="0 0 1 1 1"/><feFuncG type="table" tableValues="0 0 0 1 1"/><feFuncB type="table" tableValues="1 0 0 0 1"/></feComponentTransfer></filter>
+        <filter id="svg-matrix"><feColorMatrix type="matrix" values="0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0" /></filter>
+        <filter id="svg-nightvision"><feColorMatrix type="matrix" values="0 0 0 0 0 0 1.2 0 0 0 0 0 0 0 0 0 0 0 1 0"/><feComponentTransfer><feFuncG type="gamma" amplitude="1.5" exponent="0.8"/></feComponentTransfer></filter>
+        <filter id="svg-xray"><feColorMatrix type="matrix" values="-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 0 0 0 1 0"/><feColorMatrix type="matrix" values="0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0 0 0 1 0"/></filter>
+        <filter id="svg-posterize"><feComponentTransfer><feFuncR type="discrete" tableValues="0 0.25 0.5 0.75 1"/><feFuncG type="discrete" tableValues="0 0.25 0.5 0.75 1"/><feFuncB type="discrete" tableValues="0 0.25 0.5 0.75 1"/></feComponentTransfer></filter>
+        <filter id="svg-edge"><feConvolveMatrix order="3 3" kernelMatrix="-1 -1 -1 -1 8 -1 -1 -1 -1"/></filter>
+        <filter id="svg-trippy"><feComponentTransfer><feFuncR type="gamma" amplitude="2" exponent="0.5" offset="0"/><feFuncG type="table" tableValues="1 0 1 0"/><feFuncB type="table" tableValues="0 1 0 1"/></feComponentTransfer></filter>
+        <filter id="svg-emboss"><feConvolveMatrix order="3 3" kernelMatrix="2 1 0 1 1 -1 0 -1 -2"/></filter>
+        <filter id="svg-alien"><feColorMatrix type="matrix" values="0 0 1 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0 1 0"/></filter>
+        <filter id="svg-glitch"><feOffset dx="5" dy="0" in="SourceGraphic" result="red-shift"/><feOffset dx="-5" dy="0" in="SourceGraphic" result="blue-shift"/><feMerge><feMergeNode in="red-shift"/><feMergeNode in="blue-shift"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="svg-duotone-red"><feColorMatrix type="matrix" values="0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0 0 0 1 0" result="gray"/><feComponentTransfer><feFuncR type="table" tableValues="0.1 0.9"/><feFuncG type="table" tableValues="0 0.1"/><feFuncB type="table" tableValues="0.1 0.2"/></feComponentTransfer></filter>
+        <filter id="svg-duotone-blue"><feColorMatrix type="matrix" values="0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0 0 0 1 0" result="gray"/><feComponentTransfer><feFuncR type="table" tableValues="0 0.1"/><feFuncG type="table" tableValues="0.1 0.3"/><feFuncB type="table" tableValues="0.2 0.9"/></feComponentTransfer></filter>
+        <filter id="svg-psychedelic"><feColorMatrix type="matrix" values="1 -1 1 0 0 -1 1 -1 0 0 1 -1 1 0 0 0 0 0 1 0" /></filter>
+        <filter id="svg-comic"><feConvolveMatrix order="3 3" kernelMatrix="0 -1 0 -1 5 -1 0 -1 0"/><feComponentTransfer><feFuncR type="discrete" tableValues="0 0.3 0.6 1"/><feFuncG type="discrete" tableValues="0 0.3 0.6 1"/><feFuncB type="discrete" tableValues="0 0.3 0.6 1"/></feComponentTransfer></filter>
+    </svg>
+
     <div id="name-overlay" class="full-overlay">
         <div class="name-card">
             <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
-            <h2>Who's joining?</h2>
-            
-            <div id="auth-badge" class="auth-badge" style="display: none;">Verified by Google</div>
-            
-            <input type="text" id="username" placeholder="Enter name..." maxlength="20" autofocus onkeypress="if(event.key==='Enter') requestJoin()">
-            <button class="btn-primary" onclick="requestJoin()">Ask to Join</button>
+            <h2>Ready to Join?</h2>
+            <div class="auth-badge"><span class="material-symbols-outlined">verified</span> Verified by Google</div>
+            <input type="text" id="username" value="{{ user_name }}" readonly>
+            <button class="btn-primary" onclick="requestJoin()">Join Meeting</button>
         </div>
     </div>
 
@@ -199,43 +229,57 @@
     <div id="appearance-sidebar" class="sidebar">
         <div class="side-head">Filters <span class="material-symbols-outlined" style="cursor:pointer; color:#aaa;" onclick="toggleSidebar('appearance-sidebar')">close</span></div>
         <div id="appearance-content">
-            <div class="filter-card active" onclick="applyFilter('none', this)">Normal</div>
-            <div class="filter-card" onclick="applyFilter('f-matrix', this)">The Matrix</div>
-            <div class="filter-card" onclick="applyFilter('f-xray', this)">X-Ray</div>
-            <div class="filter-card" onclick="applyFilter('f-night', this)">Night Vision</div>
-            <div class="filter-card" onclick="applyFilter('f-infrared', this)">Infrared</div>
-            <div class="filter-card" onclick="applyFilter('f-vintage', this)">Vintage</div>
-            <div class="filter-card" onclick="applyFilter('f-synth', this)">Synthwave</div>
-            <div class="filter-card" onclick="applyFilter('f-vapor', this)">Vaporwave</div>
-            <div class="filter-card" onclick="applyFilter('f-cyber', this)">Cyberpunk</div>
-            <div class="filter-card" onclick="applyFilter('f-noir', this)">Noir</div>
-            <div class="filter-card" onclick="applyFilter('f-sepia', this)">Classic Sepia</div>
-            <div class="filter-card" onclick="applyFilter('f-ocean', this)">Deep Ocean</div>
-            <div class="filter-card" onclick="applyFilter('f-lava', this)">Lava Pit</div>
-            <div class="filter-card" onclick="applyFilter('f-golden', this)">Golden Hour</div>
-            <div class="filter-card" onclick="applyFilter('f-ghost', this)">Ghost</div>
-            <div class="filter-card" onclick="applyFilter('f-highcon', this)">High Contrast</div>
-            <div class="filter-card" onclick="applyFilter('f-washed', this)">Washed Out</div>
-            <div class="filter-card" onclick="applyFilter('f-alien', this)">Alien</div>
-            <div class="filter-card" onclick="applyFilter('f-frost', this)">Frostbite</div>
-            <div class="filter-card" onclick="applyFilter('f-blood', this)">Blood Moon</div>
-            <div class="filter-card" onclick="applyFilter('f-toxic', this)">Toxic Waste</div>
-            <div class="filter-card" onclick="applyFilter('f-dream', this)">Dreamstate</div>
-            <div class="filter-card" onclick="applyFilter('f-poster', this)">Posterize</div>
-            <div class="filter-card" onclick="applyFilter('f-noir-high', this)">Hard Noir</div>
-            <div class="filter-card" onclick="applyFilter('f-emerald', this)">Emerald</div>
-            <div class="filter-card" onclick="applyFilter('f-sapphire', this)">Sapphire</div>
-            <div class="filter-card" onclick="applyFilter('f-amethyst', this)">Amethyst</div>
-            <div class="filter-card" onclick="applyFilter('f-ruby', this)">Ruby</div>
-            <div class="filter-card" onclick="applyFilter('f-glitch1', this)">Glitch Red</div>
-            <div class="filter-card" onclick="applyFilter('f-glitch2', this)">Glitch Blue</div>
-            <div class="filter-card" onclick="applyFilter('f-solarize', this)">Solarize</div>
-            <div class="filter-card" onclick="applyFilter('f-haze', this)">Morning Haze</div>
-            <div class="filter-card" onclick="applyFilter('f-warm', this)">Warm Light</div>
-            <div class="filter-card" onclick="applyFilter('f-cool', this)">Cool Light</div>
-            <div class="filter-card" onclick="applyFilter('f-neon', this)">Neon Glow</div>
-            <div class="filter-card" onclick="applyFilter('f-blur', this)">Heavy Blur</div>
-            <div class="filter-card" onclick="applyFilter('f-invert', this)">Invert Colors</div>
+            <div class="filter-card active" onclick="applyFilter('clear', 'none', this)" style="grid-column: span 2;">Normal (Off)</div>
+            
+            <div class="filter-header">True AR Filters</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'pug', this)">🐶 Pug Dog</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'aviators', this)">🕶️ Aviators</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'dalmatian', this)">🐾 Dalmatian</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'flowers', this)">🌸 Flowers</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'koala', this)">🐨 Koala</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'lion', this)">🦁 Lion</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'mudMask', this)">🧖 Mud Mask</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'sloth', this)">🦥 Sloth</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'vendetta_mask', this)">🎭 Vendetta</div>
+
+            <div class="filter-header">Native Shaders</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-thermal', this)">🔥 Thermal</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-xray', this)">💀 X-Ray</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-edge', this)">✍️ Sketch</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-comic', this)">🗯️ Comic Book</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-matrix', this)">💻 Matrix</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-night', this)">🌙 Night Vision</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-glitch', this)">📺 Glitch</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-trippy', this)">🌀 Trippy</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-alien', this)">👽 Alien</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-duotone-red', this)">🔴 Duotone Red</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-duotone-blue', this)">🔵 Duotone Blue</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-emboss', this)">🪙 Emboss</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-poster', this)">🎨 Posterize</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-psychedelic', this)">🍄 Acid</div>
+            
+            <div class="filter-header">Cinematic Color</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-noir', this)">Noir</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-sepia', this)">Sepia</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-cyber', this)">Cyberpunk</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-blur', this)">Heavy Blur</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-invert', this)">Invert Colors</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-warm', this)">Warm Light</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-cool', this)">Cool Light</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-neon', this)">Neon Glow</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-vintage', this)">Vintage</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-ocean', this)">Deep Ocean</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-lava', this)">Lava Pit</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-synth', this)">Synthwave</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-haze', this)">Morning Haze</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-ghost', this)">Ghostly</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-toxic', this)">Toxic Waste</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-emerald', this)">Emerald</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-sapphire', this)">Sapphire</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-amethyst', this)">Amethyst</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-ruby', this)">Ruby</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-highcon', this)">High Contrast</div>
+            <div class="filter-card" onclick="applyFilter('css', 'f-washed', this)">Washed Out</div>
         </div>
     </div>
 
@@ -250,7 +294,7 @@
         <button class="circle-btn" id="micBtn" onclick="toggleMic()"><span class="material-symbols-outlined">mic</span></button>
         <button class="circle-btn" id="camBtn" onclick="toggleCam()"><span class="material-symbols-outlined">videocam</span></button>
         <button class="circle-btn" id="shareBtn" onclick="toggleScreen()"><span class="material-symbols-outlined">present_to_all</span></button>
-        <button class="circle-btn" onclick="toggleSidebar('appearance-sidebar')"><span class="material-symbols-outlined">palette</span></button>
+        <button class="circle-btn" onclick="toggleSidebar('appearance-sidebar')"><span class="material-symbols-outlined">auto_fix_high</span></button>
         <button class="circle-btn" onclick="toggleInvite()"><span class="material-symbols-outlined">person_add</span></button>
         <button class="circle-btn" onclick="toggleSidebar('chat-sidebar')"><span class="material-symbols-outlined">chat</span></button>
         <button class="circle-btn red" onclick="window.location.href='/'" style="width: 65px; border-radius: 25px;"><span class="material-symbols-outlined">call_end</span></button>
@@ -260,8 +304,9 @@
     const socket = io();
     const room = "{{ room_id }}";
     const myId = Math.random().toString(36).substring(7);
-    let myName = "", isHost = false;
-    let localStream, screenStream;
+    let myName = document.getElementById('username').value;
+    let isHost = false;
+    let rawAudioStream, localStream, screenStream, deepAR;
     let isSharingScreen = false;
     let peers = {}; 
     const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
@@ -269,19 +314,10 @@
 
     document.getElementById('meet-link').innerText = window.location.href;
 
-    // --- Google Auth Auto-Fill Logic ---
-    const googleName = "{{ user_name }}";
-    if (googleName !== "") {
-        document.getElementById('username').value = googleName;
-        document.getElementById('username').readOnly = true; // Lock it so they can't impersonate
-        document.getElementById('auth-badge').style.display = 'inline-block';
-    }
-
     function createEmptyTrack(kind) {
         const ctx = new AudioContext();
         const dest = ctx.createMediaStreamDestination();
         if (kind === 'audio') return dest.stream.getAudioTracks()[0];
-        
         const canvas = Object.assign(document.createElement('canvas'), { width: 640, height: 480 });
         canvas.getContext('2d').fillRect(0, 0, 640, 480);
         const track = canvas.captureStream().getVideoTracks()[0];
@@ -290,15 +326,31 @@
     }
 
     async function requestJoin() {
-        myName = document.getElementById('username').value.trim() || "Guest";
         document.getElementById('name-overlay').style.display = 'none';
+        document.getElementById('waiting-overlay').style.display = 'flex';
         
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        } catch(e) { 
+            rawAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        } catch(e) { console.log("No mic found"); }
+
+        try {
+            // Initialize DeepAR
+            deepAR = await deepar.initialize({
+                licenseKey: '{{ deepar_key }}',
+                previewElement: document.getElementById('deepar-canvas-container'),
+                effect: 'none'
+            });
+            const arCanvas = document.querySelector('#deepar-canvas-container canvas');
+            const arStream = arCanvas.captureStream(30);
+            
+            localStream = new MediaStream([
+                arStream.getVideoTracks()[0],
+                rawAudioStream ? rawAudioStream.getAudioTracks()[0] : createEmptyTrack('audio')
+            ]);
+        } catch(e) {
+            console.error("DeepAR failed. Falling back to webcam.", e);
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-                localStream.addTrack(createEmptyTrack('video'));
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             } catch(e2) {
                 localStream = new MediaStream([createEmptyTrack('video'), createEmptyTrack('audio')]);
             }
@@ -310,7 +362,6 @@
         if (!localStream.getVideoTracks()[0].enabled) forceSetCam(false);
         if (!localStream.getAudioTracks()[0].enabled) forceSetMic(false);
         
-        document.getElementById('waiting-overlay').style.display = 'flex';
         socket.emit('request-join', { room, userId: myId, name: myName });
     }
 
@@ -362,7 +413,7 @@
     });
 
     function forceSetMic(state) {
-        if (localStream.getAudioTracks()[0]) localStream.getAudioTracks()[0].enabled = state;
+        if (rawAudioStream) rawAudioStream.getAudioTracks()[0].enabled = state;
         document.getElementById('local-mic-badge').style.display = state ? 'none' : 'flex';
         const btn = document.getElementById('micBtn');
         btn.classList.toggle('active', !state);
@@ -371,7 +422,9 @@
     }
 
     function forceSetCam(state) {
-        if (localStream.getVideoTracks()[0]) localStream.getVideoTracks()[0].enabled = state;
+        if (deepAR) { state ? deepAR.startVideo() : deepAR.stopVideo(); }
+        else if (localStream.getVideoTracks()[0]) { localStream.getVideoTracks()[0].enabled = state; }
+        
         document.getElementById('local-wrapper').classList.toggle('cam-off', !state);
         const btn = document.getElementById('camBtn');
         btn.classList.toggle('active', !state);
@@ -465,8 +518,8 @@
             
             monitorSpeech(e.streams[0], `wrap-${partnerId}`);
             
-            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'cam', state: localStream.getVideoTracks()[0].enabled });
-            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'mic', state: localStream.getAudioTracks()[0].enabled });
+            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'cam', state: !document.getElementById('local-wrapper').classList.contains('cam-off') });
+            if(rawAudioStream) socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'mic', state: rawAudioStream.getAudioTracks()[0].enabled });
             socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'screen', state: isSharingScreen });
             
             const activeFilter = document.querySelector('.filter-card.active').getAttribute('onclick').match(/'([^']+)'/)[1];
@@ -486,17 +539,30 @@
         document.getElementById(id).classList.toggle('open');
     }
 
-    function applyFilter(filterClass, el) {
+    async function applyFilter(type, filterId, el) {
         document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
+
         const wrapper = document.getElementById('local-wrapper');
         wrapper.className = wrapper.className.replace(/\bf-\S+/g, '');
-        if (filterClass !== 'none') wrapper.classList.add(filterClass);
-        socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: filterClass });
+
+        if (type === 'clear') {
+            if(deepAR) await deepAR.clearEffect();
+            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
+        } 
+        else if (type === 'css') {
+            if(deepAR) await deepAR.clearEffect();
+            wrapper.classList.add(filterId);
+            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: filterId });
+        } 
+        else if (type === 'ar') {
+            if(deepAR) await deepAR.switchEffect(`https://cdn.jsdelivr.net/npm/deepar/effects/${filterId}`);
+            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
+        }
     }
 
-    function toggleCam() { forceSetCam(!localStream.getVideoTracks()[0].enabled); }
-    function toggleMic() { forceSetMic(!localStream.getAudioTracks()[0].enabled); }
+    function toggleCam() { forceSetCam(document.getElementById('local-wrapper').classList.contains('cam-off')); }
+    function toggleMic() { if(rawAudioStream) forceSetMic(!rawAudioStream.getAudioTracks()[0].enabled); }
 
     function monitorSpeech(stream, wrapperId) {
         try {
