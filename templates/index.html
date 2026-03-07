@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SODMeet | {{ room_id }}</title>
@@ -26,7 +25,6 @@
         .btn-primary { background: var(--orange); color: black; border: none; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1rem; }
         .btn-primary:hover { background: #ff9d26; }
         
-        /* The Google Login Button (Fallback Lock) */
         .google-btn { background: white; color: #333; border: none; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 1rem; }
         .google-btn:hover { background: #f1f3f4; }
         .google-btn img { width: 20px; height: 20px; margin: 0; border-radius: 0; }
@@ -50,7 +48,7 @@
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); transition: filter 0.3s; }
         video.is-screen { transform: scale(-1, -1) !important; object-fit: contain !important; background: #000; position: relative; z-index: 10; }
         
-        /* 5 Focused Native Cinematic & SVG Shader Filters */
+        /* 5 Native Cinematic & SVG Shader Filters */
         .f-noir video { filter: grayscale(100%) contrast(150%); }
         .f-sepia video { filter: sepia(100%) contrast(110%); }
         .f-cyber video { filter: hue-rotate(90deg) saturate(250%) contrast(120%); }
@@ -108,7 +106,7 @@
         .chat-input input { flex: 1; background: #111; border: 1px solid #444; color: white; padding: 10px 15px; border-radius: 20px; outline: none; }
         
         /* Scrollable Filters Grid */
-        #appearance-content { padding: 20px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-height: calc(100vh - 80px); }
+        #appearance-content { padding: 20px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-height: calc(100vh - 80px); align-content: start; }
         .filter-header { font-size: 0.9rem; color: var(--orange); margin: 15px 0 10px 0; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; grid-column: span 2;}
         .filter-card { background: #111; border: 2px solid #333; border-radius: 12px; padding: 10px; text-align: center; cursor: pointer; transition: 0.2s; font-weight: bold; font-size: 0.85rem; }
         .filter-card:hover, .filter-card.active { border-color: var(--orange); background: rgba(255,140,0,0.1); }
@@ -208,13 +206,13 @@
             <div class="filter-card" onclick="applyFilter('ar', 'pug', this)">🐶 Pug Dog</div>
             <div class="filter-card" onclick="applyFilter('ar', 'aviators', this)">🕶️ Aviators</div>
             <div class="filter-card" onclick="applyFilter('ar', 'dalmatian', this)">🐾 Dalmatian</div>
-            <div class="filter-card" onclick="applyFilter('ar', 'flowers', this)">🌸 Flowers</div>
-            <div class="filter-card" onclick="applyFilter('ar', 'koala', this)">🐨 Koala</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'flower_face', this)">🌸 Flowers</div>
             <div class="filter-card" onclick="applyFilter('ar', 'lion', this)">🦁 Lion</div>
-            <div class="filter-card" onclick="applyFilter('ar', 'mudMask', this)">🧖 Mud Mask</div>
-            <div class="filter-card" onclick="applyFilter('ar', 'sloth', this)">🦥 Sloth</div>
-            <div class="filter-card" onclick="applyFilter('ar', 'vendetta_mask', this)">🎭 Vendetta</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'mud_mask', this)">🧖 Mud Mask</div>
             <div class="filter-card" onclick="applyFilter('ar', 'neon_devil_horns', this)">😈 Neon Horns</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'pixel_hearts', this)">💖 Pixel Hearts</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'snail', this)">🐌 Snail</div>
+            <div class="filter-card" onclick="applyFilter('ar', 'stallone', this)">💪 Tough Guy</div>
 
             <div class="filter-header">5 Native Shaders</div>
             <div class="filter-card" onclick="applyFilter('css', 'f-noir', this)">Noir</div>
@@ -247,11 +245,11 @@
     const room = "{{ room_id }}";
     const myId = Math.random().toString(36).substring(7);
     
-    // Safely grab the Google name if they are logged in
     const nameInput = document.getElementById('username');
     let myName = nameInput ? nameInput.value : "";
     
-    let isHost = false, rawAudioStream, localStream, screenStream, deepAR;
+    let isHost = false;
+    let rawVideoStream, rawAudioStream, localStream, screenStream, deepAR;
     let isSharingScreen = false, peers = {}; 
     const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -277,29 +275,16 @@
         document.getElementById('waiting-overlay').style.display = 'flex';
         
         try {
-            rawAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        } catch(e) { console.log("No mic found"); }
-
-        try {
-            // Initialize DeepAR (Fixed initialization crash)
-            deepAR = await deepar.initialize({
-                licenseKey: '{{ deepar_key }}',
-                previewElement: document.getElementById('deepar-canvas-container')
-            });
-            const arCanvas = document.querySelector('#deepar-canvas-container canvas');
-            const arStream = arCanvas.captureStream(30);
-            
-            localStream = new MediaStream([
-                arStream.getVideoTracks()[0],
-                rawAudioStream ? rawAudioStream.getAudioTracks()[0] : createEmptyTrack('audio')
-            ]);
+            // Get RAW camera first (No DeepAR initialization yet)
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            rawVideoStream = new MediaStream([stream.getVideoTracks()[0]]);
+            rawAudioStream = new MediaStream([stream.getAudioTracks()[0]]);
+            localStream = stream; // By default, use raw stream
         } catch(e) {
-            console.error("DeepAR failed. Falling back to normal webcam.", e);
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            } catch(e2) {
-                localStream = new MediaStream([createEmptyTrack('video'), createEmptyTrack('audio')]);
-            }
+            console.warn("Media devices issue:", e);
+            rawVideoStream = new MediaStream([createEmptyTrack('video')]);
+            rawAudioStream = new MediaStream([createEmptyTrack('audio')]);
+            localStream = new MediaStream([rawVideoStream.getVideoTracks()[0], rawAudioStream.getAudioTracks()[0]]);
         }
         
         document.getElementById('localVideo').srcObject = localStream;
@@ -309,6 +294,71 @@
         if (!localStream.getAudioTracks()[0].enabled) forceSetMic(false);
         
         socket.emit('request-join', { room, userId: myId, name: myName });
+    }
+
+    // --- Dynamic Track Swapping for DeepAR ---
+    // This entirely bypasses the watermark when not using AR
+    async function applyFilter(type, filterId, el) {
+        document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+
+        const wrapper = document.getElementById('local-wrapper');
+        const localVid = document.getElementById('localVideo');
+        wrapper.className = wrapper.className.replace(/\bf-\S+/g, '');
+
+        if (type === 'clear' || type === 'css') {
+            // 1. Stop DeepAR if it exists to remove watermark
+            if(deepAR) {
+                await deepAR.clearEffect();
+                deepAR.stopVideo();
+            }
+            
+            // 2. Re-attach the raw, un-watermarked camera directly to WebRTC and Video
+            const rawTrack = rawVideoStream.getVideoTracks()[0];
+            Object.values(peers).forEach(p => {
+                const sender = p.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                if (sender) sender.replaceTrack(rawTrack);
+            });
+            localStream.removeTrack(localStream.getVideoTracks()[0]);
+            localStream.addTrack(rawTrack);
+            localVid.srcObject = localStream;
+
+            // 3. Apply standard CSS if needed
+            if (type === 'css') wrapper.classList.add(filterId);
+            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: type === 'clear' ? 'none' : filterId });
+        } 
+        else if (type === 'ar') {
+            try {
+                // Lazy-load DeepAR ONLY when a filter is clicked
+                if (!deepAR) {
+                    deepAR = await deepar.initialize({
+                        licenseKey: '{{ deepar_key }}',
+                        previewElement: document.getElementById('deepar-canvas-container')
+                    });
+                }
+                
+                await deepAR.startVideo();
+                await deepAR.switchEffect(`https://cdn.jsdelivr.net/npm/deepar/effects/${filterId}`);
+                
+                // Extract AR stream and swap tracks
+                const arCanvas = document.querySelector('#deepar-canvas-container canvas');
+                const arStream = arCanvas.captureStream(30);
+                const arTrack = arStream.getVideoTracks()[0];
+                
+                Object.values(peers).forEach(p => {
+                    const sender = p.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (sender) sender.replaceTrack(arTrack);
+                });
+                
+                localStream.removeTrack(localStream.getVideoTracks()[0]);
+                localStream.addTrack(arTrack);
+                localVid.srcObject = localStream;
+                
+                socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
+            } catch(err) {
+                console.error("DeepAR effect failed:", err);
+            }
+        }
     }
 
     socket.on('join-request', data => {
@@ -331,11 +381,7 @@
         else socket.emit('deny-user', { target: targetId });
     }
 
-    socket.on('join-denied', () => {
-        alert("The host declined your request to join.");
-        window.location.href = '/';
-    });
-
+    socket.on('join-denied', () => { alert("The host declined your request to join."); window.location.href = '/'; });
     socket.on('join-accepted', data => {
         isHost = data.isHost;
         document.getElementById('waiting-overlay').style.display = 'none';
@@ -347,15 +393,11 @@
         monitorSpeech(localStream, 'local-wrapper');
     });
 
-    socket.on('meeting-ended', () => {
-        alert("The host has ended the meeting.");
-        window.location.href = '/';
-    });
-
+    socket.on('meeting-ended', () => { alert("The host has ended the meeting."); window.location.href = '/'; });
     socket.on('admin-action', data => {
-        if (data.action === 'kick') { window.location.href = '/'; } 
-        else if (data.action === 'mute') { forceSetMic(false); } 
-        else if (data.action === 'cam-off') { forceSetCam(false); }
+        if (data.action === 'kick') window.location.href = '/';
+        else if (data.action === 'mute') forceSetMic(false);
+        else if (data.action === 'cam-off') forceSetCam(false);
     });
 
     function forceSetMic(state) {
@@ -368,8 +410,9 @@
     }
 
     function forceSetCam(state) {
-        if (deepAR) { state ? deepAR.startVideo() : deepAR.stopVideo(); }
-        else if (localStream.getVideoTracks()[0]) { localStream.getVideoTracks()[0].enabled = state; }
+        if (rawVideoStream) rawVideoStream.getVideoTracks()[0].enabled = state;
+        if (deepAR && state) deepAR.startVideo();
+        if (deepAR && !state) deepAR.stopVideo();
         
         document.getElementById('local-wrapper').classList.toggle('cam-off', !state);
         const btn = document.getElementById('camBtn');
@@ -483,32 +526,6 @@
     function toggleSidebar(id) {
         document.querySelectorAll('.sidebar').forEach(el => { if (el.id !== id) el.classList.remove('open'); });
         document.getElementById(id).classList.toggle('open');
-    }
-
-    async function applyFilter(type, filterId, el) {
-        document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
-        el.classList.add('active');
-
-        const wrapper = document.getElementById('local-wrapper');
-        wrapper.className = wrapper.className.replace(/\bf-\S+/g, ''); // Clear native CSS/SVG
-
-        if (type === 'clear') {
-            if(deepAR) await deepAR.clearEffect();
-            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
-        } 
-        else if (type === 'css') {
-            if(deepAR) await deepAR.clearEffect(); // Clear AR before native
-            wrapper.classList.add(filterId);
-            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: filterId });
-        } 
-        else if (type === 'ar') {
-            try {
-                if(deepAR) await deepAR.switchEffect(`https://cdn.jsdelivr.net/npm/deepar/effects/${filterId}`);
-                socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
-            } catch(err) {
-                console.error("DeepAR effect failed to load:", err);
-            }
-        }
     }
 
     function toggleCam() { forceSetCam(document.getElementById('local-wrapper').classList.contains('cam-off')); }
