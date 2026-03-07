@@ -24,7 +24,10 @@ google = oauth.register(
 
 # --- RESTRICTED ROOMS LOGIC ---
 RESTRICTED_ROOMS = ['chairs', 'secretariat', 'interviews', 'jobless', 'safa', 'general', 'informal']
-ALLOWED_EMAILS = os.getenv('ALLOWED_EMAILS', '').split(',')
+
+# BULLETPROOF EMAIL PARSING: Strips accidental spaces and makes everything lowercase
+raw_emails = os.getenv('ALLOWED_EMAILS', '').split(',')
+ALLOWED_EMAILS = [email.strip().lower() for email in raw_emails if email.strip()]
 
 # Track the Host of each room & user sessions
 rooms_hosts = {}
@@ -62,12 +65,33 @@ def meeting(room_id):
         if 'user' not in session:
             session['next_url'] = request.url
             return redirect(url_for('login'))
-        if session['user']['email'] not in ALLOWED_EMAILS:
-            return f"<h1>Access Denied</h1><p>Your email ({session['user']['email']}) is not authorized to join the <b>{room_id}</b> room.</p>", 403
+        
+        # Get the Google email, strip spaces, and make it lowercase to match safely
+        user_email = session['user'].get('email', '').strip().lower()
+        
+        if user_email not in ALLOWED_EMAILS:
+            # Styled Dark Mode Access Denied Screen
+            return f"""
+            <html>
+            <head>
+                <title>Access Denied</title>
+                <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+            </head>
+            <body style="background:#0f0f11; color:white; font-family:'Nunito', sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0;">
+                <div style="background:#1a1a1e; padding:40px; border-radius:24px; border:1px solid rgba(234,67,53,0.3); text-align:center; box-shadow:0 20px 50px rgba(0,0,0,0.8); max-width: 400px;">
+                    <div style="font-size: 50px; margin-bottom: 10px;">🔒</div>
+                    <h1 style="color:#ea4335; margin-top:0;">Access Denied</h1>
+                    <p style="color:#aaa; font-size:1.1rem; line-height: 1.5;">The Google account <b>{user_email}</b> does not have clearance for the <b>/{room_id}</b> room.</p>
+                    <button onclick="window.location.href='/'" style="background:#FF8C00; color:black; border:none; padding:12px 25px; border-radius:10px; font-weight:bold; cursor:pointer; margin-top:20px; font-size:1rem; width: 100%; transition: 0.2s;">Return to Dashboard</button>
+                </div>
+            </body>
+            </html>
+            """, 403
 
-    # Pass the Google name to the frontend if they are logged in
+    # Pass the Google name and DeepAR key to the frontend
     user_name = session.get('user', {}).get('name', '')
-    return render_template('index.html', room_id=room_id, user_name=user_name)
+    deepar_key = os.getenv('DEEPAR_KEY', '')
+    return render_template('index.html', room_id=room_id, user_name=user_name, deepar_key=deepar_key)
 
 # --- WEBRTC & SOCKET LOGIC ---
 @socketio.on('request-join')
