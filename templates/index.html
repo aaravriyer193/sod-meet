@@ -270,7 +270,7 @@
     }
 
     async function requestJoin() {
-        if (!myName) return; // Failsafe block if no name is present
+        if (!myName) return; 
         
         document.getElementById('name-overlay').style.display = 'none';
         document.getElementById('waiting-overlay').style.display = 'flex';
@@ -280,11 +280,10 @@
         } catch(e) { console.log("No mic found"); }
 
         try {
-            // Initialize DeepAR
+            // Initialize DeepAR (Fixed initialization crash)
             deepAR = await deepar.initialize({
                 licenseKey: '{{ deepar_key }}',
-                previewElement: document.getElementById('deepar-canvas-container'),
-                effect: 'none'
+                previewElement: document.getElementById('deepar-canvas-container')
             });
             const arCanvas = document.querySelector('#deepar-canvas-container canvas');
             const arStream = arCanvas.captureStream(30);
@@ -502,8 +501,12 @@
             socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: filterId });
         } 
         else if (type === 'ar') {
-            if(deepAR) await deepAR.switchEffect(`https://cdn.jsdelivr.net/npm/deepar/effects/${filterId}`);
-            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
+            try {
+                if(deepAR) await deepAR.switchEffect(`https://cdn.jsdelivr.net/npm/deepar/effects/${filterId}`);
+                socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
+            } catch(err) {
+                console.error("DeepAR effect failed to load:", err);
+            }
         }
     }
 
