@@ -3,23 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SODMeet | Premium Video Meetings, Free for Everyone</title>
+    
+    <title>SODMeet | Premium Video Meetings, Free & Secure</title>
+    <meta name="description" content="Experience high-definition, end-to-end encrypted video meetings with SODMeet. Featuring real-time AR filters, screen sharing, and zero time limits. Join for free.">
+    <meta name="keywords" content="video meetings, web conferencing, free video calls, WebRTC, secure meetings, SODMeet, SODMUN, screen sharing, AR filters, online meetings">
+    <meta name="author" content="SODMUN">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://meet.sodmun.com/">
+    <meta name="google-site-verification" content="u8VhB-Ch9byeFqYIivkzl3YnkSwrVxvDkexl9p7VNHI" />
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://meet.sodmun.com/">
+    <meta property="og:title" content="SODMeet | Premium Video Meetings">
+    <meta property="og:description" content="Secure, high-definition video calls with zero time limits. Built for teams, developers, and friends.">
+    <meta property="og:image" content="{{ url_for('static', filename='logo.png') }}">
+    
     <link rel="icon" href="{{ url_for('static', filename='logo.png') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "SODMeet",
+      "url": "https://meet.sodmun.com",
+      "description": "Secure, high-definition video meetings with no time limits.",
+      "applicationCategory": "CommunicationApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
+
     <style>
         :root { 
             --orange: #FF8C00; 
             --orange-hover: #ff9d26;
-            --bg: #0a0a0a; 
-            --surface: #161616;
+            --orange-glow: rgba(255, 140, 0, 0.4);
+            --bg: #050505; 
+            --surface: rgba(22, 22, 22, 0.6);
+            --surface-solid: #161616;
             --text-main: #ffffff;
             --text-muted: #9aa0a6;
-            --border: rgba(255, 255, 255, 0.1);
+            --border: rgba(255, 255, 255, 0.08);
+            --glass: blur(16px);
         }
         
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; scroll-behavior: smooth; }
         body, input, button { font-family: 'Nunito', sans-serif; margin: 0; }
         
         body { 
@@ -29,175 +62,165 @@
             overflow-x: hidden;
         }
 
+        /* Ambient Background Glows */
+        .ambient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: -1;
+            animation: float 10s ease-in-out infinite;
+        }
+        .orb-1 { top: -10%; left: -10%; width: 500px; height: 500px; background: rgba(255, 140, 0, 0.15); }
+        .orb-2 { bottom: 20%; right: -5%; width: 600px; height: 600px; background: rgba(255, 60, 0, 0.1); animation-delay: -5s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-30px) scale(1.05); }
+        }
+
         /* Utility Classes */
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 40px; }
-        section { padding: 100px 0; }
-        .highlight { color: var(--orange); }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 40px; position: relative; z-index: 2; }
+        section { padding: 120px 0; }
+        .highlight { color: var(--orange); background: linear-gradient(90deg, #FF8C00, #ff5e00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .section-title { text-align: center; font-size: 3rem; font-weight: 900; margin-bottom: 20px; }
+        .section-subtitle { text-align: center; color: var(--text-muted); font-size: 1.2rem; max-width: 600px; margin: 0 auto 60px; }
 
         /* Navigation */
         header {
             position: sticky;
             top: 0;
-            background: rgba(10, 10, 10, 0.8);
-            backdrop-filter: blur(10px);
+            background: rgba(5, 5, 5, 0.7);
+            backdrop-filter: var(--glass);
+            -webkit-backdrop-filter: var(--glass);
             z-index: 1000;
             border-bottom: 1px solid var(--border);
+            transition: all 0.3s ease;
         }
-        nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            height: 80px;
-        }
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1.4rem;
-            font-weight: 800;
-            color: var(--text-main);
-            text-decoration: none;
-        }
+        nav { display: flex; justify-content: space-between; align-items: center; height: 80px; }
+        .brand { display: flex; align-items: center; gap: 12px; font-size: 1.5rem; font-weight: 900; color: var(--text-main); text-decoration: none; letter-spacing: -0.5px; }
         .brand img { width: 40px; height: 40px; border-radius: 10px; }
-        .nav-right { display: flex; align-items: center; gap: 30px; }
-        .time-display { font-weight: 600; color: var(--text-muted); font-size: 0.9rem; }
+        .nav-right { display: flex; align-items: center; gap: 25px; }
+        .time-display { font-weight: 600; color: var(--text-muted); font-size: 0.95rem; }
+        
+        /* User Profile Badge */
+        .user-badge { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 50px; border: 1px solid var(--border); font-weight: 700; font-size: 0.9rem; }
+        .user-badge ion-icon { font-size: 1.2rem; color: var(--orange); }
+
+        /* Buttons */
+        .btn-primary { background: var(--orange); color: #000; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: 800; display: inline-flex; align-items: center; gap: 10px; transition: 0.3s; font-size: 1rem; border: none; cursor: pointer; box-shadow: 0 4px 15px var(--orange-glow); }
+        .btn-primary:hover { background: var(--orange-hover); transform: translateY(-2px); box-shadow: 0 8px 25px var(--orange-glow); }
+        .btn-secondary { background: transparent; color: var(--text-main); padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: 700; border: 1px solid var(--border); transition: 0.3s; }
+        .btn-secondary:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); }
 
         /* Hero Section */
-        .hero { 
-            display: flex; 
-            align-items: center; 
-            min-height: calc(100vh - 80px);
-            background-image: radial-gradient(circle at 80% 20%, rgba(255, 140, 0, 0.15) 0%, transparent 40%);
-        }
-        .hero-grid {
-            display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
-            gap: 40px;
-            align-items: center;
-        }
-        h1 { font-size: 4rem; font-weight: 800; line-height: 1.1; margin-bottom: 24px; }
-        .hero-content p { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 40px; max-width: 500px; }
+        .hero { display: flex; align-items: center; min-height: calc(100vh - 80px); padding: 60px 0; }
+        .hero-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 60px; align-items: center; }
+        h1 { font-size: 4.5rem; font-weight: 900; line-height: 1.05; margin-bottom: 24px; letter-spacing: -1px; }
+        .hero-content p { font-size: 1.3rem; color: var(--text-muted); margin-bottom: 40px; max-width: 540px; }
 
-        /* Buttons & Inputs */
-        .action-group { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-        .btn-primary {
-            background: var(--orange);
-            color: #000;
-            padding: 16px 30px;
-            border-radius: 12px;
-            text-decoration: none;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: 0.3s;
-        }
-        .btn-primary:hover { background: var(--orange-hover); transform: translateY(-2px); }
-
-        .join-box {
-            display: flex;
-            align-items: center;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 4px 4px 4px 15px;
-        }
-        .join-box input {
-            background: transparent;
-            border: none;
-            color: white;
-            padding: 10px;
-            width: 180px;
-            outline: none;
-            font-size: 1rem;
-        }
-        .join-btn {
-            background: transparent;
-            color: var(--text-muted);
-            border: none;
-            font-weight: 700;
-            padding: 10px 20px;
-            cursor: pointer;
-        }
-        .join-btn.active { color: var(--orange); }
+        .action-group { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+        .join-box { display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 6px 6px 6px 20px; backdrop-filter: var(--glass); box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); }
+        .join-box input { background: transparent; border: none; color: white; padding: 10px; width: 220px; outline: none; font-size: 1.05rem; font-weight: 600; }
+        .join-box input::placeholder { color: #666; font-weight: 400; }
+        .join-btn { background: transparent; color: #555; border: none; font-weight: 800; padding: 10px 24px; cursor: pointer; border-radius: 8px; transition: 0.3s; font-size: 1rem; }
+        .join-btn.active { background: rgba(255, 140, 0, 0.1); color: var(--orange); }
 
         .hero-visual { position: relative; display: flex; justify-content: flex-end; }
-        .main-logo { width: 320px; border-radius: 60px; box-shadow: 0 30px 60px rgba(0,0,0,0.5); }
+        .hero-visual::after { content: ''; position: absolute; inset: -20px; background: linear-gradient(45deg, var(--orange), transparent); filter: blur(40px); z-index: -1; opacity: 0.3; border-radius: 60px; }
+        .main-logo { width: 100%; max-width: 450px; border-radius: 30px; box-shadow: 0 30px 60px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.05); }
 
         /* Features Section */
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-            margin-top: 50px;
-        }
-        .feature-card {
-            background: var(--surface);
-            padding: 40px;
-            border-radius: 24px;
-            border: 1px solid var(--border);
-            transition: 0.3s;
-        }
-        .feature-card:hover { border-color: var(--orange); transform: translateY(-5px); }
-        .feature-card ion-icon { font-size: 40px; color: var(--orange); margin-bottom: 20px; }
-        .feature-card h3 { font-size: 1.5rem; margin-bottom: 15px; }
-        .feature-card p { color: var(--text-muted); font-size: 1rem; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+        .feature-card { background: var(--surface); backdrop-filter: var(--glass); padding: 40px; border-radius: 24px; border: 1px solid var(--border); transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; overflow: hidden; }
+        .feature-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--orange); transform: scaleX(0); transform-origin: left; transition: 0.4s ease; }
+        .feature-card:hover { transform: translateY(-10px); border-color: rgba(255,140,0,0.3); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        .feature-card:hover::before { transform: scaleX(1); }
+        .icon-wrap { width: 60px; height: 60px; background: rgba(255, 140, 0, 0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; }
+        .feature-card ion-icon { font-size: 32px; color: var(--orange); }
+        .feature-card h3 { font-size: 1.5rem; margin-bottom: 15px; font-weight: 800; }
+        .feature-card p { color: var(--text-muted); font-size: 1.05rem; }
 
-        /* How it Works */
-        .steps {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 40px;
-            counter-reset: step-counter;
-        }
-        .step { position: relative; text-align: center; }
-        .step::before {
-            counter-increment: step-counter;
-            content: counter(step-counter);
-            display: block;
-            width: 50px;
-            height: 50px;
-            background: var(--orange);
-            color: black;
-            border-radius: 50%;
-            line-height: 50px;
-            font-weight: 800;
-            margin: 0 auto 20px;
-        }
+        /* Security / Tech Section */
+        .tech-banner { background: var(--surface-solid); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); position: relative; overflow: hidden; }
+        .tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+        .tech-list { list-style: none; padding: 0; }
+        .tech-list li { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; font-size: 1.2rem; font-weight: 600; }
+        .tech-list ion-icon { color: var(--green); font-size: 1.5rem; }
+
+        /* FAQ Section */
+        .faq-container { max-width: 800px; margin: 0 auto; }
+        .faq-item { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 15px; overflow: hidden; transition: 0.3s; }
+        .faq-question { padding: 25px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 1.15rem; }
+        .faq-question ion-icon { transition: transform 0.3s; color: var(--orange); }
+        .faq-answer { padding: 0 25px; max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s ease-in-out; color: var(--text-muted); line-height: 1.7; }
+        .faq-item.active { border-color: rgba(255, 140, 0, 0.4); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .faq-item.active .faq-question ion-icon { transform: rotate(45deg); }
+        .faq-item.active .faq-answer { padding: 0 25px 25px 25px; max-height: 200px; opacity: 1; }
+
+        /* Final CTA */
+        .cta-section { background: linear-gradient(135deg, rgba(255,140,0,0.1) 0%, transparent 100%); text-align: center; border-radius: 40px; padding: 80px 40px; margin: 100px auto; border: 1px solid rgba(255,140,0,0.2); box-shadow: 0 40px 100px rgba(0,0,0,0.5); }
+        .cta-section h2 { font-size: 3.5rem; font-weight: 900; margin-bottom: 20px; }
 
         /* Footer */
-        footer {
-            padding: 60px 0;
-            border-top: 1px solid var(--border);
-            text-align: center;
-            background: #050505;
-        }
-        .footer-links { display: flex; justify-content: center; gap: 40px; margin-bottom: 30px; }
-        .footer-links a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }
-        .footer-links a:hover { color: var(--orange); }
+        footer { padding: 60px 0 40px; border-top: 1px solid var(--border); background: #020202; }
+        .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 40px; margin-bottom: 60px; }
+        .footer-col h4 { color: white; font-size: 1.2rem; margin-bottom: 20px; }
+        .footer-col p { color: var(--text-muted); max-width: 300px; }
+        .footer-links { display: flex; flex-direction: column; gap: 15px; }
+        .footer-links a { color: var(--text-muted); text-decoration: none; font-size: 1rem; transition: 0.2s; }
+        .footer-links a:hover { color: var(--orange); padding-left: 5px; }
+        .footer-bottom { text-align: center; color: #555; font-size: 0.9rem; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); }
 
-        @media (max-width: 900px) {
-            .hero-grid { grid-template-columns: 1fr; text-align: center; }
-            .hero-content p { margin: 0 auto 40px; }
+        /* Scroll Reveal Animation Classes */
+        .reveal { opacity: 0; transform: translateY(40px); transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+
+        @media (max-width: 960px) {
+            .hero-grid, .tech-grid, .footer-grid { grid-template-columns: 1fr; text-align: center; }
+            h1 { font-size: 3rem; }
+            .hero-content p, .section-subtitle { margin: 0 auto 40px; }
             .action-group { justify-content: center; }
-            .hero-visual { justify-content: center; margin-top: 50px; }
-            .steps { grid-template-columns: 1fr; }
-            h1 { font-size: 2.8rem; }
+            .hero-visual::after { display: none; }
+            .tech-list li { justify-content: center; }
+            .footer-col p { margin: 0 auto; }
+            .nav-right .time-display { display: none; }
+        }
+        @media (max-width: 600px) {
+            .join-box { flex-direction: column; background: transparent; border: none; padding: 0; width: 100%; box-shadow: none; }
+            .join-box input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 10px; }
+            .join-btn { width: 100%; background: var(--surface); border: 1px solid var(--border); }
+            .btn-primary { width: 100%; justify-content: center; }
+            .user-badge { display: none; }
         }
     </style>
 </head>
 <body>
 
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+
     <header>
         <div class="container">
             <nav>
                 <a href="/" class="brand">
-                    <img src="{{ url_for('static', filename='logo.png') }}" alt="SODMeet">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="SODMeet Logo">
                     SODMeet
                 </a>
                 <div class="nav-right">
                     <div class="time-display" id="header-clock"></div>
-                    <a href="/join" class="btn-primary" style="padding: 10px 20px; font-size: 0.9rem;">Join Meeting</a>
+                    
+                    {% if user_name %}
+                        <div class="user-badge" title="Logged in securely via Google">
+                            <ion-icon name="shield-checkmark"></ion-icon>
+                            {{ user_name.split(' ')[0] }}
+                        </div>
+                    {% else %}
+                        <a href="/login" class="btn-secondary">Sign In</a>
+                    {% endif %}
+                    
+                    <a href="/join" class="btn-primary" style="padding: 10px 20px; font-size: 0.95rem;">
+                        <ion-icon name="add-outline"></ion-icon> New Meeting
+                    </a>
                 </div>
             </nav>
         </div>
@@ -207,75 +230,129 @@
         <section class="hero">
             <div class="container">
                 <div class="hero-grid">
-                    <div class="hero-content">
-                        <h1>Secure video calls.<br><span class="highlight">No limits.</span> No catch.</h1>
-                        <p>Experience high-definition video meetings with end-to-end encryption. Built for developers, teams, and friends.</p>
+                    <div class="hero-content reveal">
+                        <h1>Premium video calls.<br><span class="highlight">Engineered for everyone.</span></h1>
+                        <p>Experience ultra-low latency, hardware-accelerated AR filters, and true end-to-end encryption. Built specifically for modern teams, developers, and SODMUN.</p>
                         
                         <div class="action-group">
                             <a href="/join" class="btn-primary">
-                                <ion-icon name="videocam"></ion-icon>
-                                Start New Meeting
+                                <ion-icon name="videocam" style="font-size: 1.2rem;"></ion-icon>
+                                Start an Instant Meeting
                             </a>
                             
                             <div class="join-box">
-                                <ion-icon name="keypad-outline" style="color: #666;"></ion-icon>
-                                <input type="text" id="roomInput" placeholder="Join or Make a custom room" onkeyup="checkInput(event)">
+                                <ion-icon name="link-outline" style="color: #666; font-size: 1.2rem;"></ion-icon>
+                                <input type="text" id="roomInput" placeholder="Enter meeting code or link" onkeyup="checkInput(event)">
                                 <button class="join-btn" id="joinAction" onclick="joinWithCode()" disabled>Join</button>
                             </div>
                         </div>
                     </div>
-                    <div class="hero-visual">
-                        <img src="{{ url_for('static', filename='logo.png') }}" class="main-logo" alt="Meeting Interface">
+                    <div class="hero-visual reveal" style="transition-delay: 0.2s;">
+                        <img src="{{ url_for('static', filename='logo.png') }}" class="main-logo" alt="SODMeet Interface Preview">
                     </div>
                 </div>
             </div>
         </section>
 
-        <section id="features" style="background: #050505;">
+        <section id="features" class="reveal">
             <div class="container">
-                <div style="text-align: center; margin-bottom: 60px;">
-                    <h2 style="font-size: 2.5rem;">Why choose <span class="highlight">SODMeet?</span></h2>
-                    <p style="color: var(--text-muted);">Everything you need for seamless communication.</p>
-                </div>
+                <h2 class="section-title">Beyond Standard Meetings</h2>
+                <p class="section-subtitle">We stripped away the clutter and rebuilt video conferencing from the ground up to give you the ultimate communication tool.</p>
                 
                 <div class="features-grid">
                     <div class="feature-card">
-                        <ion-icon name="infinite-outline"></ion-icon>
-                        <h3>Unlimited Time</h3>
-                        <p>Forget the 40-minute limit. Talk for as long as you want without interruptions or subscriptions.</p>
+                        <div class="icon-wrap"><ion-icon name="infinite"></ion-icon></div>
+                        <h3>Zero Time Limits</h3>
+                        <p>Say goodbye to the 40-minute cut-off. Talk, brainstorm, and collaborate for as long as you need without a premium subscription.</p>
                     </div>
                     <div class="feature-card">
-                        <ion-icon name="shield-half-outline"></ion-icon>
-                        <h3>Fully Secure</h3>
-                        <p>Your privacy is our priority. Peer-to-peer encryption ensures your data stays between you and your peers.</p>
+                        <div class="icon-wrap"><ion-icon name="color-wand"></ion-icon></div>
+                        <h3>Native AR Shaders</h3>
+                        <p>Access 10+ DeepAR 3D face-tracking filters and 15 natively built GPU-accelerated cinematic shaders right in your browser.</p>
                     </div>
                     <div class="feature-card">
-                        <ion-icon name="desktop-outline"></ion-icon>
-                        <h3>Screen Sharing</h3>
-                        <p>Present your ideas, slides, or code with one-click high-resolution screen sharing built right in.</p>
+                        <div class="icon-wrap"><ion-icon name="desktop"></ion-icon></div>
+                        <h3>Flawless Screen Share</h3>
+                        <p>Present your work with perfectly preserved aspect ratios. Our WebRTC engine ensures crystal clear text rendering for code and slides.</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section>
+        <section class="tech-banner reveal">
             <div class="container">
-                <div style="text-align: center; margin-bottom: 80px;">
-                    <h2 style="font-size: 2.5rem;">Meeting in <span class="highlight">Seconds</span></h2>
+                <div class="tech-grid">
+                    <div>
+                        <h2 class="section-title" style="text-align: left; font-size: 2.5rem;">Enterprise-Grade Security. <br><span class="highlight">By Default.</span></h2>
+                        <p style="color: var(--text-muted); font-size: 1.15rem; margin-bottom: 30px;">Your privacy isn't an afterthought. Our architecture ensures your video and audio streams are directly routed between peers.</p>
+                        <ul class="tech-list">
+                            <li><ion-icon name="checkmark-circle"></ion-icon> Strict Google OAuth Verification</li>
+                            <li><ion-icon name="checkmark-circle"></ion-icon> Peer-to-Peer DTLS Encryption</li>
+                            <li><ion-icon name="checkmark-circle"></ion-icon> Secure Server Enclaves for Host Controls</li>
+                            <li><ion-icon name="checkmark-circle"></ion-icon> Environment Variable Protection</li>
+                        </ul>
+                    </div>
+                    <div style="text-align: center;">
+                        <ion-icon name="shield-checkmark" style="font-size: 15rem; color: rgba(255, 140, 0, 0.1); filter: drop-shadow(0 0 40px rgba(255,140,0,0.3));"></ion-icon>
+                    </div>
                 </div>
-                <div class="steps">
-                    <div class="step">
-                        <h3>Create</h3>
-                        <p>Click "Start New Meeting" to generate a unique, private room link instantly.</p>
+            </div>
+        </section>
+
+        <section id="faq" class="reveal">
+            <div class="container">
+                <h2 class="section-title">Frequently Asked Questions</h2>
+                <p class="section-subtitle">Everything you need to know about SODMeet.</p>
+                
+                <div class="faq-container">
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">
+                            Do I need to create an account to join a meeting?
+                            <ion-icon name="add-outline"></ion-icon>
+                        </div>
+                        <div class="faq-answer">
+                            Yes. To maintain strict security protocols and prevent unauthorized access, all users must verify their identity using Google Sign-In before entering any meeting room.
+                        </div>
                     </div>
-                    <div class="step">
-                        <h3>Invite</h3>
-                        <p>Copy the meeting URL and send it to your participants. No login required for them.</p>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">
+                            Is SODMeet completely free?
+                            <ion-icon name="add-outline"></ion-icon>
+                        </div>
+                        <div class="faq-answer">
+                            Absolutely. We provide premium features like unlimited meeting durations, screen sharing, and AR filters completely free of charge.
+                        </div>
                     </div>
-                    <div class="step">
-                        <h3>Connect</h3>
-                        <p>Turn on your camera and enjoy crystal clear audio and video conferencing.</p>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">
+                            Why can't I access certain rooms like /chairs or /secretariat?
+                            <ion-icon name="add-outline"></ion-icon>
+                        </div>
+                        <div class="faq-answer">
+                            Specific rooms are hard-locked by environment variables to specific organizational email addresses. If your Google account email is not on the authorized clearance list, you will be met with an Access Denied screen.
+                        </div>
                     </div>
+                    <div class="faq-item" onclick="toggleFaq(this)">
+                        <div class="faq-question">
+                            Do the AR Filters require a fast computer?
+                            <ion-icon name="add-outline"></ion-icon>
+                        </div>
+                        <div class="faq-answer">
+                            We use a hybrid approach. Our 3D DeepAR filters utilize WebAssembly and WebGL to run efficiently. If you are on an older device, you can use our "Native Shaders" which manipulate CSS and SVG matrices, requiring almost zero CPU overhead.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="reveal">
+            <div class="container">
+                <div class="cta-section">
+                    <h2>Ready to elevate your meetings?</h2>
+                    <p style="font-size: 1.2rem; color: var(--text-muted); margin-bottom: 40px; max-width: 600px; margin-left: auto; margin-right: auto;">Join thousands of users who have switched to a faster, cleaner, and more secure conferencing experience.</p>
+                    <a href="/join" class="btn-primary" style="font-size: 1.2rem; padding: 18px 40px;">
+                        <ion-icon name="rocket-outline"></ion-icon> Launch Your First Meeting
+                    </a>
                 </div>
             </div>
         </section>
@@ -283,19 +360,51 @@
 
     <footer>
         <div class="container">
-            <div class="footer-links">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <a href="/" class="brand" style="margin-bottom: 20px;">
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="SODMeet">
+                        SODMeet
+                    </a>
+                    <p>The ultimate peer-to-peer secure video conferencing platform engineered for modern productivity.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Platform</h4>
+                    <div class="footer-links">
+                        <a href="/join">Start a Meeting</a>
+                        <a href="#features">Features</a>
+                        <a href="#faq">FAQ</a>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h4>Legal</h4>
+                    <div class="footer-links">
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Terms of Service</a>
+                        <a href="#">Contact Support</a>
+                    </div>
+                </div>
             </div>
-            <p style="color: #444; font-size: 0.85rem;">&copy; 2026 SODMeet. All rights reserved. Powered by WebRTC technology.</p>
+            <div class="footer-bottom">
+                &copy; <span id="year"></span> SODMeet. All rights reserved. Powered by WebRTC.
+            </div>
         </div>
     </footer>
 
     <script>
-        // Clock Script
+        // Set Current Year in Footer
+        document.getElementById('year').innerText = new Date().getFullYear();
+
+        // Real-time Clock
         setInterval(() => {
             const now = new Date();
-            document.getElementById('header-clock').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' • ' + now.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const dateStr = now.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+            const clockEl = document.getElementById('header-clock');
+            if (clockEl) clockEl.innerText = `${timeStr} • ${dateStr}`;
         }, 1000);
 
+        // Input Validation for Join Box
         const roomInput = document.getElementById('roomInput');
         const joinBtn = document.getElementById('joinAction');
 
@@ -313,11 +422,38 @@
 
         function joinWithCode() {
             let code = roomInput.value.trim();
+            // Handle if user pastes a full URL (e.g. https://meet.sodmun.com/xyz-123)
             if (code.includes('/')) {
                 code = code.split('/').pop();
             }
             window.location.href = '/' + code;
         }
+
+        // FAQ Accordion Logic
+        function toggleFaq(element) {
+            // Close all others
+            document.querySelectorAll('.faq-item').forEach(item => {
+                if(item !== element) item.classList.remove('active');
+            });
+            // Toggle clicked
+            element.classList.toggle('active');
+        }
+
+        // Scroll Reveal Animations
+        function reveal() {
+            var reveals = document.querySelectorAll('.reveal');
+            var windowHeight = window.innerHeight;
+            var elementVisible = 100;
+
+            reveals.forEach(el => {
+                var elementTop = el.getBoundingClientRect().top;
+                if (elementTop < windowHeight - elementVisible) {
+                    el.classList.add('active');
+                }
+            });
+        }
+        window.addEventListener('scroll', reveal);
+        reveal(); // Trigger on load
     </script>
 </body>
 </html>
