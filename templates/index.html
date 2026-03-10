@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SODMeet | {{ room_id }}</title>
+    <title>SODMeet | Secure Meetings</title>
     <link rel="icon" href="{{ url_for('static', filename='logo.png') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/deepar/js/deepar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
     
     <style>
         :root { --orange: #FF8C00; --bg: #0f0f11; --panel: #1a1a1e; --red: #ea4335; --green: #34a853; }
@@ -31,6 +32,10 @@
         .btn-primary { background: var(--orange); color: black; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1.1rem; }
         .btn-primary:hover { background: #ff9d26; transform: translateY(-2px); }
         
+        .google-btn { background: white; color: #333; border: none; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 1rem; }
+        .google-btn:hover { background: #f1f3f4; }
+        .google-btn img { width: 20px; height: 20px; margin: 0; }
+
         .auth-badge { background: rgba(52, 168, 83, 0.15); color: var(--green); padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; margin-bottom: 10px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--green); }
         .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,140,0,0.2); border-top: 4px solid var(--orange); border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -44,7 +49,6 @@
         .video-wrapper.pinned { flex: 0 0 100%; max-width: 100%; height: 65vh; max-height: 65vh; order: -1; border-color: var(--orange); margin-bottom: 10px; }
         #video-grid.has-pinned .video-wrapper:not(.pinned) { flex: 0 1 200px; max-width: 250px; height: auto; aspect-ratio: 16/9; }
 
-        /* Video Core */
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); transition: filter 0.3s; }
         video.is-screen { transform: scaleX(1) !important; object-fit: contain !important; background: #000; position: relative; z-index: 10; }
         
@@ -55,7 +59,6 @@
         .f-blur video { filter: blur(8px); }
         .f-thermal video { filter: url(#svg-thermal); }
 
-        /* Overlays & Badges */
         .avatar-view { position: absolute; inset: 0; background: #222; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5; }
         .cam-off .avatar-view { display: flex; }
         .initials { width: 70px; height: 70px; background: var(--orange); color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; }
@@ -103,11 +106,16 @@
         .chat-input { padding: 20px; border-top: 1px solid #333; display: flex; gap: 10px; }
         .chat-input input { flex: 1; background: #111; border: 1px solid #444; color: white; padding: 10px 15px; border-radius: 20px; outline: none; }
         
-        /* Sidebar Grids */
         .sidebar-content { padding: 20px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start; }
         .filter-header { font-size: 0.9rem; color: var(--orange); margin: 15px 0 5px 0; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; grid-column: span 2;}
         .filter-card { background: #111; border: 2px solid #333; border-radius: 12px; padding: 10px; text-align: center; cursor: pointer; transition: 0.2s; font-weight: bold; font-size: 0.85rem; }
         .filter-card:hover, .filter-card.active { border-color: var(--orange); background: rgba(255,140,0,0.1); }
+        
+        /* Custom Upload Background Input */
+        .upload-btn-wrapper { grid-column: span 2; margin-top: 5px; }
+        .upload-btn-wrapper input[type=file] { display: none; }
+        .upload-btn { background: #222; border: 1px dashed var(--orange); color: var(--orange); padding: 10px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .upload-btn:hover { background: rgba(255,140,0,0.1); }
 
         #invite-popup { position: fixed; left: 30px; bottom: 90px; width: 300px; background: white; color: #121212; padding: 20px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); z-index: 500; display: none; }
 
@@ -121,12 +129,16 @@
 
     <div id="deepar-canvas-container" style="width: 640px; height: 480px; position: absolute; visibility: hidden; pointer-events: none; z-index: -1;"></div>
 
+    <video id="raw-video-element" style="display: none;" playsinline autoplay muted></video>
+    <canvas id="bg-canvas" width="640" height="480" style="display: none;"></canvas>
+
     <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
         <filter id="svg-thermal"><feColorMatrix type="matrix" values="0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0 0 0 1 0" result="gray"/><feComponentTransfer><feFuncR type="table" tableValues="0 0 1 1 1"/><feFuncG type="table" tableValues="0 0 0 1 1"/><feFuncB type="table" tableValues="1 0 0 0 1"/></feComponentTransfer></filter>
     </svg>
 
     <div id="prejoin-overlay" class="full-overlay">
         <div class="prejoin-container">
+            
             <div class="prejoin-video-box">
                 <video id="prejoin-video" autoplay playsinline muted></video>
                 <div class="prejoin-controls">
@@ -137,11 +149,20 @@
             
             <div class="name-card">
                 <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
-                <h2>Ready to Join?</h2>
-                <div class="auth-badge"><span class="material-symbols-outlined">verified</span> Verified by Google</div>
-                <input type="text" id="username" value="{{ user_name }}" readonly>
-                <p style="font-size: 0.8rem; color: #888; margin-bottom: 20px;">Use <kbd>Ctrl+D</kbd> for Mic and <kbd>Ctrl+E</kbd> for Camera</p>
-                <button class="btn-primary" onclick="executeJoin()">Join Meeting</button>
+                {% if user_name %}
+                    <h2>Ready to Join?</h2>
+                    <div class="auth-badge"><span class="material-symbols-outlined">verified</span> Verified by Google</div>
+                    <input type="text" id="username" value="{{ user_name }}" readonly>
+                    <p style="font-size: 0.8rem; color: #888; margin-bottom: 20px;">Use <kbd>Ctrl+D</kbd> for Mic and <kbd>Ctrl+E</kbd> for Camera</p>
+                    <button class="btn-primary" onclick="executeJoin()">Join Meeting</button>
+                {% else %}
+                    <h2>Login Required</h2>
+                    <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px;">You must sign in with Google to enter this secure room.</p>
+                    <button class="google-btn" onclick="window.location.href='/login'">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google">
+                        Sign in with Google
+                    </button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -188,28 +209,42 @@
         <div class="side-head">Effects <span class="material-symbols-outlined" style="cursor:pointer; color:#aaa;" onclick="toggleSidebar('appearance-sidebar')">close</span></div>
         
         <div id="appearance-content" class="sidebar-content">
+            <div class="filter-card active" onclick="applyEffect('clear', 'none', this)" style="grid-column: span 2;">Normal (Clear All)</div>
             
-            <div class="filter-header">Voice Filters</div>
+            <div class="filter-header">Virtual Backgrounds</div>
+            <div class="filter-card" onclick="applyEffect('bg', 'blur', this)">🌫️ Blur</div>
+            <div class="filter-card" onclick="applyEffect('bg', 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=640&q=80', this)">🏢 Office</div>
+            <div class="filter-card" onclick="applyEffect('bg', 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?auto=format&fit=crop&w=640&q=80', this)">🌌 Galaxy</div>
+            <div class="filter-card" onclick="applyEffect('bg', 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=640&q=80', this)">🏖️ Paris</div>
+            <div class="upload-btn-wrapper">
+                <button class="upload-btn" onclick="document.getElementById('bg-upload').click()">+ Upload Custom Background</button>
+                <input type="file" id="bg-upload" accept="image/*" onchange="handleCustomBg(event)">
+            </div>
+
+            <div class="filter-header" style="margin-top: 15px;">Voice Changer</div>
             <div class="filter-card active" onclick="applyVoice('normal', this)">🎙️ Normal</div>
             <div class="filter-card" onclick="applyVoice('echo', this)">🕳️ Cave Echo</div>
             <div class="filter-card" onclick="applyVoice('robot', this)">🤖 Robot</div>
             <div class="filter-card" onclick="applyVoice('radio', this)">📻 Radio</div>
 
-            <div class="filter-header" style="margin-top: 20px;">Video Filters</div>
-            <div class="filter-card active" onclick="applyFilter('clear', 'none', this)" style="grid-column: span 2;">Normal (Off)</div>
-            
-            <div class="filter-card" onclick="applyFilter('css', 'f-noir', this)">Noir</div>
-            <div class="filter-card" onclick="applyFilter('css', 'f-sepia', this)">Sepia</div>
-            <div class="filter-card" onclick="applyFilter('css', 'f-cyber', this)">Cyberpunk</div>
-            <div class="filter-card" onclick="applyFilter('css', 'f-thermal', this)">🔥 Thermal</div>
+            <div class="filter-header" style="margin-top: 15px;">AR Effects</div>
+            <div class="filter-card" onclick="applyEffect('ar', 'pug', this)">🐶 Pug Dog</div>
+            <div class="filter-card" onclick="applyEffect('ar', 'aviators', this)">🕶️ Aviators</div>
+            <div class="filter-card" onclick="applyEffect('ar', 'dalmatian', this)">🐾 Dalmatian</div>
+            <div class="filter-card" onclick="applyEffect('ar', 'flower_face', this)">🌸 Flowers</div>
+            <div class="filter-card" onclick="applyEffect('ar', 'lion', this)">🦁 Lion</div>
+            <div class="filter-card" onclick="applyEffect('ar', 'mud_mask', this)">🧖 Mud Mask</div>
+            <div class="filter-card" onclick="applyEffect('ar', 'sleeping_mask', this)">😴 Sleep Mask</div>
+            <div class="filter-card" onclick="applyEffect('ar', 'beard', this)">🧔 Beard</div>
+            <div class="filter-card" onclick="applyEffect('ar', 'stallone', this)">💪 Tough Guy</div>
+            <div class="filter-card" onclick="applyEffect('ar', 'viking_helmet', this)">🛡️ Viking</div>
 
-            <div class="filter-header" style="margin-top: 20px;">AR Effects</div>
-            <div class="filter-card" onclick="applyFilter('ar', 'pug', this)">🐶 Pug Dog</div>
-            <div class="filter-card" onclick="applyFilter('ar', 'aviators', this)">🕶️ Aviators</div>
-            <div class="filter-card" onclick="applyFilter('ar', 'flowers', this)">🌸 Flowers</div>
-            <div class="filter-card" onclick="applyFilter('ar', 'lion', this)">🦁 Lion</div>
-            <div class="filter-card" onclick="applyFilter('ar', 'vendetta_mask', this)">🎭 Vendetta</div>
-            <div class="filter-card" onclick="applyFilter('ar', 'neon_devil_horns', this)">😈 Neon Horns</div>
+            <div class="filter-header" style="margin-top: 15px;">Video Shaders</div>
+            <div class="filter-card" onclick="applyEffect('css', 'f-noir', this)">Noir</div>
+            <div class="filter-card" onclick="applyEffect('css', 'f-sepia', this)">Sepia</div>
+            <div class="filter-card" onclick="applyEffect('css', 'f-cyber', this)">Cyberpunk</div>
+            <div class="filter-card" onclick="applyEffect('css', 'f-blur', this)">Heavy Blur</div>
+            <div class="filter-card" onclick="applyEffect('css', 'f-thermal', this)">🔥 Thermal</div>
         </div>
     </div>
 
@@ -234,25 +269,30 @@
     const socket = io();
     const room = "{{ room_id }}";
     const myId = Math.random().toString(36).substring(7);
-    const myName = document.getElementById('username') ? document.getElementById('username').value : "Guest";
+    const nameInput = document.getElementById('username');
+    const myName = nameInput ? nameInput.value : "";
     
     let isHost = false;
     let rawVideoStream, rawAudioStream, processedAudioStream, localStream, screenStream, deepAR;
     let isSharingScreen = false, peers = {}; 
-    
-    // The WebRTC Mesh Fix: ICE Candidate Queues
     let iceCandidatesQueue = {};
-    
     const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
     
-    // Voice Changer Setup
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let audioSourceNode, activeVoiceEffectNode;
     const audioDestinationNode = audioCtx.createMediaStreamDestination();
 
+    // MediaPipe Virtual Background Globals
+    let selfieSegmentation;
+    const bgCanvas = document.getElementById('bg-canvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    const rawVideoEl = document.getElementById('raw-video-element');
+    let activeBgImage = null;
+    let isBgBlur = false;
+    let isBgActive = false;
+
     document.getElementById('meet-link').innerText = window.location.href;
 
-    // --- KEYBOARD SHORTCUTS ---
     document.addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key.toLowerCase() === 'd') {
             e.preventDefault();
@@ -266,16 +306,15 @@
         }
     });
 
-    // --- INITIALIZE PRE-JOIN CAMERA ---
     async function initPrejoin() {
+        if(!myName) return;
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: {width: 640, height: 480}, audio: true });
             rawVideoStream = new MediaStream([stream.getVideoTracks()[0]]);
             rawAudioStream = new MediaStream([stream.getAudioTracks()[0]]);
             document.getElementById('prejoin-video').srcObject = rawVideoStream;
-        } catch(e) {
-            console.warn("No camera/mic found for prejoin.");
-        }
+            rawVideoEl.srcObject = rawVideoStream; 
+        } catch(e) { console.warn("No camera/mic found"); }
     }
     initPrejoin();
 
@@ -297,21 +336,16 @@
         btn.innerHTML = track.enabled ? '<span class="material-symbols-outlined">videocam</span>' : '<span class="material-symbols-outlined">videocam_off</span>';
     }
 
-    // --- EXECUTE JOIN FROM GREEN ROOM ---
     function executeJoin() {
         document.getElementById('prejoin-overlay').style.display = 'none';
         document.getElementById('waiting-overlay').style.display = 'flex';
         
-        // Build the Voice Changer output stream
         if (rawAudioStream && rawAudioStream.getAudioTracks().length > 0) {
             if(audioCtx.state === 'suspended') audioCtx.resume();
             audioSourceNode = audioCtx.createMediaStreamSource(rawAudioStream);
-            audioSourceNode.connect(audioDestinationNode); // Default: pass-through
+            audioSourceNode.connect(audioDestinationNode);
             processedAudioStream = audioDestinationNode.stream;
-        } else {
-            const emptyAudio = audioCtx.createMediaStreamDestination().stream;
-            processedAudioStream = emptyAudio;
-        }
+        } else { processedAudioStream = audioCtx.createMediaStreamDestination().stream; }
 
         localStream = new MediaStream([
             rawVideoStream ? rawVideoStream.getVideoTracks()[0] : null,
@@ -321,145 +355,148 @@
         document.getElementById('localVideo').srcObject = localStream;
         document.getElementById('local-init').innerText = myName[0].toUpperCase();
         
-        // Sync main buttons with prejoin choices
         if (rawVideoStream && !rawVideoStream.getVideoTracks()[0].enabled) forceSetCam(false);
         if (rawAudioStream && !rawAudioStream.getAudioTracks()[0].enabled) forceSetMic(false);
         
         socket.emit('request-join', { room, userId: myId, name: myName });
     }
 
-    // --- VOICE CHANGER ENGINE ---
     function applyVoice(effect, el) {
-        // Highlight active UI safely now that ID is restored
         const cards = document.getElementById('appearance-content').querySelectorAll('.filter-card');
-        for(let i=0; i<4; i++) cards[i].classList.remove('active'); // First 4 are audio
+        cards.forEach(c => { if(c.innerText.includes('🎙️') || c.innerText.includes('🤖') || c.innerText.includes('🕳️') || c.innerText.includes('📻')) c.classList.remove('active'); });
         el.classList.add('active');
 
         if (!audioSourceNode) return;
-        
-        // Disconnect old routing
         audioSourceNode.disconnect();
-        if (activeVoiceEffectNode) {
-            activeVoiceEffectNode.disconnect();
-            activeVoiceEffectNode = null;
-        }
+        if (activeVoiceEffectNode) { activeVoiceEffectNode.disconnect(); activeVoiceEffectNode = null; }
 
-        if (effect === 'normal') {
-            audioSourceNode.connect(audioDestinationNode);
-        } 
+        if (effect === 'normal') { audioSourceNode.connect(audioDestinationNode); } 
         else if (effect === 'echo') {
-            const delay = audioCtx.createDelay();
-            delay.delayTime.value = 0.3;
-            const feedback = audioCtx.createGain();
-            feedback.gain.value = 0.4;
-            
-            delay.connect(feedback);
-            feedback.connect(delay);
-            
-            audioSourceNode.connect(delay);
-            audioSourceNode.connect(audioDestinationNode); // Dry signal
-            delay.connect(audioDestinationNode);           // Wet signal
+            const delay = audioCtx.createDelay(); delay.delayTime.value = 0.3;
+            const feedback = audioCtx.createGain(); feedback.gain.value = 0.4;
+            delay.connect(feedback); feedback.connect(delay);
+            audioSourceNode.connect(delay); audioSourceNode.connect(audioDestinationNode); delay.connect(audioDestinationNode);
             activeVoiceEffectNode = delay;
         }
         else if (effect === 'robot') {
-            // Ring Modulation for Dalek/Robot sound
-            const osc = audioCtx.createOscillator();
-            osc.type = 'sawtooth';
-            osc.frequency.value = 50;
-            const gain = audioCtx.createGain();
-            
-            osc.connect(gain.gain);
-            audioSourceNode.connect(gain);
-            gain.connect(audioDestinationNode);
-            osc.start();
+            const osc = audioCtx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 50;
+            const gain = audioCtx.createGain(); osc.connect(gain.gain);
+            audioSourceNode.connect(gain); gain.connect(audioDestinationNode); osc.start();
             activeVoiceEffectNode = gain;
         }
         else if (effect === 'radio') {
-            // Bandpass filter for Telephone EQ
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = 'bandpass';
-            filter.frequency.value = 1000;
-            filter.Q.value = 1;
-            
-            audioSourceNode.connect(filter);
-            filter.connect(audioDestinationNode);
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 1000; filter.Q.value = 1;
+            audioSourceNode.connect(filter); filter.connect(audioDestinationNode);
             activeVoiceEffectNode = filter;
         }
     }
 
-    // --- VIDEO FILTER ENGINE (DeepAR v5 + Native) ---
-    async function applyFilter(type, filterId, el) {
-        const cards = document.getElementById('appearance-content').querySelectorAll('.filter-card');
-        for(let i=4; i<cards.length; i++) cards[i].classList.remove('active');
-        el.classList.add('active');
+    // Helper: Swap video track to WebRTC peers instantly
+    function updateVideoTrack(newTrack) {
+        if (!newTrack) return;
+        Object.values(peers).forEach(p => {
+            const sender = p.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+            if (sender) sender.replaceTrack(newTrack);
+        });
+        localStream.removeTrack(localStream.getVideoTracks()[0]);
+        localStream.addTrack(newTrack);
+        document.getElementById('localVideo').srcObject = localStream;
+    }
 
-        const wrapper = document.getElementById('local-wrapper');
-        const localVid = document.getElementById('localVideo');
-        wrapper.className = wrapper.className.replace(/\bf-\S+/g, '');
-
-        if (type === 'clear' || type === 'css') {
-            if(deepAR) {
-                await deepAR.clearEffect();
-                deepAR.stopCamera(); 
-            }
-            
-            if (rawVideoStream) {
-                const rawTrack = rawVideoStream.getVideoTracks()[0];
-                Object.values(peers).forEach(p => {
-                    const sender = p.pc.getSenders().find(s => s.track && s.track.kind === 'video');
-                    if (sender) sender.replaceTrack(rawTrack);
-                });
-                localStream.removeTrack(localStream.getVideoTracks()[0]);
-                localStream.addTrack(rawTrack);
-                localVid.srcObject = localStream;
-            }
-
-            if (type === 'css') wrapper.classList.add(filterId);
-            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: type === 'clear' ? 'none' : filterId });
-        } 
-        else if (type === 'ar') {
-            try {
-                if (!deepAR) {
-                    deepAR = await deepar.initialize({
-                        licenseKey: '{{ deepar_key }}',
-                        previewElement: document.getElementById('deepar-canvas-container')
-                    });
-                }
-                
-                await deepAR.startCamera(); 
-                
-                const url = `https://cdn.jsdelivr.net/npm/deepar/effects/${filterId}`;
-                await deepAR.switchEffect(url);
-                
-                const arCanvas = document.querySelector('#deepar-canvas-container canvas');
-                const arStream = arCanvas.captureStream(30);
-                const arTrack = arStream.getVideoTracks()[0];
-                
-                Object.values(peers).forEach(p => {
-                    const sender = p.pc.getSenders().find(s => s.track && s.track.kind === 'video');
-                    if (sender) sender.replaceTrack(arTrack);
-                });
-                
-                localStream.removeTrack(localStream.getVideoTracks()[0]);
-                localStream.addTrack(arTrack);
-                localVid.srcObject = localStream;
-                
-                socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
-            } catch(err) {
-                console.error("DeepAR effect failed to load. The .deepar file might not exist.", err);
-            }
+    // Custom Background Upload Handler
+    function handleCustomBg(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => { applyEffect('bg', e.target.result, document.querySelector('.upload-btn').parentElement); };
+            reader.readAsDataURL(file);
         }
     }
 
-    // --- ROOM LOGIC ---
+    // THE MASTER EFFECT ENGINE (Handles DeepAR, MediaPipe BG, and CSS Shaders)
+    async function applyEffect(type, value, el) {
+        const cards = document.getElementById('appearance-content').querySelectorAll('.filter-card');
+        cards.forEach(c => { if(!c.innerText.includes('🎙️') && !c.innerText.includes('🤖') && !c.innerText.includes('🕳️') && !c.innerText.includes('📻')) c.classList.remove('active'); });
+        if(el.tagName !== 'DIV') el.parentElement.classList.add('active'); else el.classList.add('active');
+
+        const wrapper = document.getElementById('local-wrapper');
+        wrapper.className = wrapper.className.replace(/\bf-\S+/g, ''); // Clear CSS
+
+        // Stop engines to save CPU
+        if (deepAR) { await deepAR.clearEffect(); deepAR.stopCamera(); }
+        isBgActive = false;
+
+        if (type === 'clear' || type === 'css') {
+            if (rawVideoStream) updateVideoTrack(rawVideoStream.getVideoTracks()[0]);
+            if (type === 'css') wrapper.classList.add(value);
+            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: type === 'clear' ? 'none' : value });
+        } 
+        else if (type === 'ar') {
+            try {
+                if (!deepAR) deepAR = await deepar.initialize({ licenseKey: '{{ deepar_key }}', previewElement: document.getElementById('deepar-canvas-container') });
+                await deepAR.startCamera(); 
+                await deepAR.switchEffect(`https://cdn.jsdelivr.net/npm/deepar/effects/${value}`);
+                
+                const arStream = document.querySelector('#deepar-canvas-container canvas').captureStream(30);
+                updateVideoTrack(arStream.getVideoTracks()[0]);
+                socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
+            } catch(err) { console.error("DeepAR effect failed:", err); }
+        }
+        else if (type === 'bg') {
+            isBgActive = true;
+            if (value === 'blur') { isBgBlur = true; activeBgImage = null; } 
+            else {
+                isBgBlur = false;
+                activeBgImage = new Image();
+                activeBgImage.src = value;
+            }
+
+            if (!selfieSegmentation) {
+                selfieSegmentation = new SelfieSegmentation({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`});
+                selfieSegmentation.setOptions({ modelSelection: 1 });
+                selfieSegmentation.onResults(handleMediaPipeResults);
+            }
+            
+            updateVideoTrack(bgCanvas.captureStream(30).getVideoTracks()[0]);
+            socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
+            processMediaPipeLoop();
+        }
+    }
+
+    // MediaPipe Virtual Background Engine
+    async function processMediaPipeLoop() {
+        if (!isBgActive || rawVideoEl.paused || rawVideoEl.ended) return;
+        await selfieSegmentation.send({image: rawVideoEl});
+        requestAnimationFrame(processMediaPipeLoop);
+    }
+
+    function handleMediaPipeResults(results) {
+        bgCtx.save();
+        bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+        
+        // 1. Draw the segmentation mask
+        bgCtx.drawImage(results.segmentationMask, 0, 0, bgCanvas.width, bgCanvas.height);
+        
+        // 2. Draw person inside the mask
+        bgCtx.globalCompositeOperation = 'source-in';
+        bgCtx.drawImage(results.image, 0, 0, bgCanvas.width, bgCanvas.height);
+        
+        // 3. Draw background behind the person
+        bgCtx.globalCompositeOperation = 'destination-over';
+        if (isBgBlur) {
+            bgCtx.filter = 'blur(15px)';
+            bgCtx.drawImage(results.image, 0, 0, bgCanvas.width, bgCanvas.height);
+            bgCtx.filter = 'none';
+        } else if (activeBgImage) {
+            bgCtx.drawImage(activeBgImage, 0, 0, bgCanvas.width, bgCanvas.height);
+        }
+        bgCtx.restore();
+    }
+
+    // --- STANDARD ROOM LOGIC ---
     socket.on('join-request', data => {
-        const toast = document.createElement('div');
-        toast.className = 'toast'; toast.id = `req-${data.userId}`;
-        toast.innerHTML = `<div><b>${data.name}</b> wants to join.</div>
-            <div class="toast-actions">
-                <button class="toast-btn t-admit" onclick="handleRequest('${data.userId}', true)">Admit</button>
-                <button class="toast-btn t-deny" onclick="handleRequest('${data.userId}', false)">Deny</button>
-            </div>`;
+        const toast = document.createElement('div'); toast.className = 'toast'; toast.id = `req-${data.userId}`;
+        toast.innerHTML = `<div><b>${data.name}</b> wants to join.</div><div class="toast-actions"><button class="toast-btn t-admit" onclick="handleRequest('${data.userId}', true)">Admit</button><button class="toast-btn t-deny" onclick="handleRequest('${data.userId}', false)">Deny</button></div>`;
         document.getElementById('toast-container').appendChild(toast);
     });
 
@@ -468,19 +505,16 @@
         socket.emit(admit ? 'admit-user' : 'deny-user', { target: targetId });
     }
 
-    socket.on('join-denied', () => { alert("The host declined your request."); window.location.href = '/'; });
+    socket.on('join-denied', () => { alert("Host declined your request."); window.location.href = '/'; });
     socket.on('join-accepted', data => {
         isHost = data.isHost;
         document.getElementById('waiting-overlay').style.display = 'none';
-        if (isHost) {
-            document.getElementById('host-badge').style.display = 'inline-block';
-            setTimeout(() => toggleInvite(), 500); 
-        }
+        if (isHost) { document.getElementById('host-badge').style.display = 'inline-block'; setTimeout(() => toggleInvite(), 500); }
         socket.emit('join-room', { room, userId: myId, name: myName });
         monitorSpeech(localStream, 'local-wrapper');
     });
 
-    socket.on('meeting-ended', () => { alert("The host has ended the meeting."); window.location.href = '/'; });
+    socket.on('meeting-ended', () => { alert("The host ended the meeting."); window.location.href = '/'; });
     socket.on('admin-action', data => {
         if (data.action === 'kick') window.location.href = '/';
         else if (data.action === 'mute') forceSetMic(false);
@@ -490,8 +524,7 @@
     function forceSetMic(state) {
         if (rawAudioStream) rawAudioStream.getAudioTracks()[0].enabled = state;
         document.getElementById('local-mic-badge').style.display = state ? 'none' : 'flex';
-        const btn = document.getElementById('micBtn');
-        btn.classList.toggle('active', !state);
+        const btn = document.getElementById('micBtn'); btn.classList.toggle('active', !state);
         btn.innerHTML = state ? '<span class="material-symbols-outlined">mic</span>' : '<span class="material-symbols-outlined">mic_off</span>';
         socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'mic', state: state });
     }
@@ -502,8 +535,7 @@
         if (deepAR && !state) deepAR.stopCamera();
         
         document.getElementById('local-wrapper').classList.toggle('cam-off', !state);
-        const btn = document.getElementById('camBtn');
-        btn.classList.toggle('active', !state);
+        const btn = document.getElementById('camBtn'); btn.classList.toggle('active', !state);
         btn.innerHTML = state ? '<span class="material-symbols-outlined">videocam</span>' : '<span class="material-symbols-outlined">videocam_off</span>';
         socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'cam', state: state });
     }
@@ -511,47 +543,28 @@
     function toggleMic() { forceSetMic(!rawAudioStream.getAudioTracks()[0].enabled); }
     function toggleCam() { forceSetCam(document.getElementById('local-wrapper').classList.contains('cam-off')); }
 
-    // --- WEBRTC MESH NETWORKING (With robust ICE Queuing Fix) ---
     socket.on('user-joined', data => initConnection(data.userId, data.name, true));
-    
     socket.on('signal', async data => {
         if (!peers[data.sender]) initConnection(data.sender, data.senderName || "Guest", false);
         const pc = peers[data.sender].pc;
-        
         if (data.sdp) {
             await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-            if (data.sdp.type === 'offer') {
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                socket.emit('signal', { target: data.sender, sender: myId, sdp: pc.localDescription });
-            }
-            // Process queued candidates now that SDP is set
-            if (iceCandidatesQueue[data.sender]) {
-                iceCandidatesQueue[data.sender].forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)));
-                delete iceCandidatesQueue[data.sender];
-            }
+            if (data.sdp.type === 'offer') { const answer = await pc.createAnswer(); await pc.setLocalDescription(answer); socket.emit('signal', { target: data.sender, sender: myId, sdp: pc.localDescription }); }
+            if (iceCandidatesQueue[data.sender]) { iceCandidatesQueue[data.sender].forEach(c => pc.addIceCandidate(new RTCIceCandidate(c))); delete iceCandidatesQueue[data.sender]; }
         } else if (data.candidate) {
-            if (pc.remoteDescription && pc.remoteDescription.type) {
-                await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-            } else {
-                if (!iceCandidatesQueue[data.sender]) iceCandidatesQueue[data.sender] = [];
-                iceCandidatesQueue[data.sender].push(data.candidate);
-            }
+            if (pc.remoteDescription && pc.remoteDescription.type) await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+            else { if (!iceCandidatesQueue[data.sender]) iceCandidatesQueue[data.sender] = []; iceCandidatesQueue[data.sender].push(data.candidate); }
         }
     });
 
     function initConnection(partnerId, partnerName, isCaller) {
-        const pc = new RTCPeerConnection(config);
-        peers[partnerId] = { pc, name: partnerName };
+        const pc = new RTCPeerConnection(config); peers[partnerId] = { pc, name: partnerName };
         localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
         pc.oniceconnectionstatechange = () => {
             if (['disconnected', 'failed', 'closed'].includes(pc.iceConnectionState)) {
                 const w = document.getElementById(`wrap-${partnerId}`);
-                if (w) {
-                    if (w.classList.contains('pinned')) document.getElementById('video-grid').classList.remove('has-pinned');
-                    w.remove();
-                }
+                if (w) { if (w.classList.contains('pinned')) document.getElementById('video-grid').classList.remove('has-pinned'); w.remove(); }
                 delete peers[partnerId];
             }
         };
@@ -560,125 +573,54 @@
 
         pc.ontrack = e => {
             if (document.getElementById(`vid-${partnerId}`)) return;
-            const wrap = document.createElement('div');
-            wrap.className = 'video-wrapper';
-            wrap.id = `wrap-${partnerId}`;
-            
-            let adminHTML = '';
-            if (isHost) {
-                adminHTML = `
-                <div class="host-menu-container">
-                    <button class="host-menu-btn" onclick="toggleHostMenu('${partnerId}')"><span class="material-symbols-outlined">more_vert</span></button>
-                    <div class="host-dropdown" id="menu-${partnerId}">
-                        <button class="dropdown-item" onclick="executeAdmin('${partnerId}', 'mute')"><span class="material-symbols-outlined">mic_off</span> Mute</button>
-                        <button class="dropdown-item" onclick="executeAdmin('${partnerId}', 'cam-off')"><span class="material-symbols-outlined">videocam_off</span> Turn Off Cam</button>
-                        <button class="dropdown-item red" onclick="executeAdmin('${partnerId}', 'kick')"><span class="material-symbols-outlined">person_remove</span> Kick</button>
-                    </div>
-                </div>`;
-            }
+            const wrap = document.createElement('div'); wrap.className = 'video-wrapper'; wrap.id = `wrap-${partnerId}`;
+            let adminHTML = isHost ? `<div class="host-menu-container"><button class="host-menu-btn" onclick="toggleHostMenu('${partnerId}')"><span class="material-symbols-outlined">more_vert</span></button><div class="host-dropdown" id="menu-${partnerId}"><button class="dropdown-item" onclick="executeAdmin('${partnerId}', 'mute')"><span class="material-symbols-outlined">mic_off</span> Mute</button><button class="dropdown-item" onclick="executeAdmin('${partnerId}', 'cam-off')"><span class="material-symbols-outlined">videocam_off</span> Turn Off Cam</button><button class="dropdown-item red" onclick="executeAdmin('${partnerId}', 'kick')"><span class="material-symbols-outlined">person_remove</span> Kick</button></div></div>` : '';
 
-            wrap.innerHTML = `
-                ${adminHTML}
-                <div class="avatar-view"><div class="initials">${partnerName[0].toUpperCase()}</div></div>
-                <div class="info-bar">
-                    <div class="name-tag">${partnerName}</div>
-                    <div class="action-icons">
-                        <div class="icon-badge" onclick="togglePin('wrap-${partnerId}')"><span class="material-symbols-outlined">push_pin</span></div>
-                        <div class="icon-badge red" id="mic-badge-${partnerId}" style="display:none;"><span class="material-symbols-outlined">mic_off</span></div>
-                    </div>
-                </div>
-                <video id="vid-${partnerId}" autoplay playsinline></video>
-            `;
-            document.getElementById('video-grid').appendChild(wrap);
-            document.getElementById(`vid-${partnerId}`).srcObject = e.streams[0];
+            wrap.innerHTML = `${adminHTML}<div class="avatar-view"><div class="initials">${partnerName[0].toUpperCase()}</div></div><div class="info-bar"><div class="name-tag">${partnerName}</div><div class="action-icons"><div class="icon-badge" onclick="togglePin('wrap-${partnerId}')"><span class="material-symbols-outlined">push_pin</span></div><div class="icon-badge red" id="mic-badge-${partnerId}" style="display:none;"><span class="material-symbols-outlined">mic_off</span></div></div></div><video id="vid-${partnerId}" autoplay playsinline></video>`;
+            document.getElementById('video-grid').appendChild(wrap); document.getElementById(`vid-${partnerId}`).srcObject = e.streams[0];
             
             monitorSpeech(e.streams[0], `wrap-${partnerId}`);
-            
             socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'cam', state: !document.getElementById('local-wrapper').classList.contains('cam-off') });
             if(rawAudioStream) socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'mic', state: rawAudioStream.getAudioTracks()[0].enabled });
             socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'screen', state: isSharingScreen });
-            
-            const activeFilter = document.querySelector('.filter-card.active').getAttribute('onclick');
-            if (activeFilter && activeFilter.includes('css')) {
-                const match = activeFilter.match(/'([^']+)'/g);
-                if (match && match.length >= 2) socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: match[1].replace(/'/g, '') });
-            }
         };
 
-        if (isCaller) {
-            pc.createOffer().then(o => {
-                pc.setLocalDescription(o);
-                socket.emit('signal', { target: partnerId, sender: myId, senderName: myName, sdp: o });
-            });
-        }
+        if (isCaller) { pc.createOffer().then(o => { pc.setLocalDescription(o); socket.emit('signal', { target: partnerId, sender: myId, senderName: myName, sdp: o }); }); }
     }
 
-    // --- SCREEN SHARING (Fixed Mirroring & Audio) ---
     async function toggleScreen() { 
         if (!isSharingScreen) {
             try {
                 screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-                const track = screenStream.getVideoTracks()[0];
-                
-                Object.values(peers).forEach(p => { 
-                    const s = p.pc.getSenders().find(s => s.track && s.track.kind === 'video'); 
-                    if(s) s.replaceTrack(track); 
-                });
-                
-                document.getElementById('localVideo').srcObject = screenStream;
+                updateVideoTrack(screenStream.getVideoTracks()[0]);
                 document.getElementById('localVideo').classList.add('is-screen');
                 document.getElementById('shareBtn').classList.add('active');
-                
                 isSharingScreen = true;
                 socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'screen', state: true });
-                
-                const localWrap = document.getElementById('local-wrapper');
-                if (!localWrap.classList.contains('pinned')) togglePin('local-wrapper');
-                
-                track.onended = () => stopScreenShare();
+                if (!document.getElementById('local-wrapper').classList.contains('pinned')) togglePin('local-wrapper');
+                screenStream.getVideoTracks()[0].onended = () => stopScreenShare();
             } catch(e) { console.warn("Screen share cancelled."); }
         } else { stopScreenShare(); }
     }
 
     function stopScreenShare() {
         if (!isSharingScreen) return;
-        const track = localStream.getVideoTracks()[0];
-        Object.values(peers).forEach(p => { const s = p.pc.getSenders().find(s => s.track && s.track.kind === 'video'); if(s && track) s.replaceTrack(track); });
-        document.getElementById('localVideo').srcObject = localStream;
+        updateVideoTrack(rawVideoStream.getVideoTracks()[0]);
         document.getElementById('localVideo').classList.remove('is-screen');
         if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
         document.getElementById('shareBtn').classList.remove('active');
         isSharingScreen = false;
         socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'screen', state: false });
-        const localWrap = document.getElementById('local-wrapper');
-        if (localWrap.classList.contains('pinned')) togglePin('local-wrapper');
+        if (document.getElementById('local-wrapper').classList.contains('pinned')) togglePin('local-wrapper');
     }
 
-    // --- UI HELPERS ---
-    function toggleSidebar(id) {
-        document.querySelectorAll('.sidebar').forEach(el => { if (el.id !== id) el.classList.remove('open'); });
-        document.getElementById(id).classList.toggle('open');
-    }
+    function toggleSidebar(id) { document.querySelectorAll('.sidebar').forEach(el => { if (el.id !== id) el.classList.remove('open'); }); document.getElementById(id).classList.toggle('open'); }
 
     function monitorSpeech(stream, wrapperId) {
         try {
             if(audioCtx.state === 'suspended') audioCtx.resume();
-            const source = audioCtx.createMediaStreamSource(stream);
-            const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 256;
-            source.connect(analyser);
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            
-            function checkVol() {
-                const wrapper = document.getElementById(wrapperId);
-                if(!wrapper) return;
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0; for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
-                if ((sum / dataArray.length) > 15) wrapper.classList.add('speaking');
-                else wrapper.classList.remove('speaking');
-                requestAnimationFrame(checkVol);
-            }
-            checkVol();
+            const source = audioCtx.createMediaStreamSource(stream); const analyser = audioCtx.createAnalyser(); analyser.fftSize = 256; source.connect(analyser); const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            function checkVol() { const wrapper = document.getElementById(wrapperId); if(!wrapper) return; analyser.getByteFrequencyData(dataArray); let sum = 0; for(let i=0; i<dataArray.length; i++) sum += dataArray[i]; if ((sum / dataArray.length) > 15) wrapper.classList.add('speaking'); else wrapper.classList.remove('speaking'); requestAnimationFrame(checkVol); } checkVol();
         } catch(e) {}
     }
 
@@ -688,37 +630,17 @@
             const vid = data.userId === myId ? document.getElementById('localVideo') : document.getElementById(`vid-${data.userId}`);
             if (w) {
                 if (data.type === 'cam') w.classList.toggle('cam-off', !data.state);
-                else if (data.type === 'mic') {
-                    const b = data.userId === myId ? document.getElementById('local-mic-badge') : document.getElementById(`mic-badge-${data.userId}`);
-                    if(b) b.style.display = data.state ? 'none' : 'flex';
-                }
-                else if (data.type === 'filter') {
-                    w.className = w.className.replace(/\bf-\S+/g, ''); 
-                    if (data.state !== 'none') w.classList.add(data.state);
-                }
-                else if (data.type === 'screen') {
-                    if (vid) {
-                        if (data.state) { vid.classList.add('is-screen'); if (!w.classList.contains('pinned')) togglePin(w.id); } 
-                        else { vid.classList.remove('is-screen'); if (w.classList.contains('pinned')) togglePin(w.id); }
-                    }
-                }
-            }
-            return;
+                else if (data.type === 'mic') { const b = data.userId === myId ? document.getElementById('local-mic-badge') : document.getElementById(`mic-badge-${data.userId}`); if(b) b.style.display = data.state ? 'none' : 'flex'; }
+                else if (data.type === 'filter') { w.className = w.className.replace(/\bf-\S+/g, ''); if (data.state !== 'none') w.classList.add(data.state); }
+                else if (data.type === 'screen') { if (vid) { if (data.state) { vid.classList.add('is-screen'); if (!w.classList.contains('pinned')) togglePin(w.id); } else { vid.classList.remove('is-screen'); if (w.classList.contains('pinned')) togglePin(w.id); } } }
+            } return;
         }
-        const m = document.getElementById('chat-msgs');
-        const timeNow = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        m.innerHTML += `<div style="background:${data.user===myName?'rgba(255,140,0,0.1)':'#2a2a2a'}; padding:8px 12px; border-radius:10px; margin-bottom:5px;"><b>${data.user}</b> <span style="font-size: 0.75rem; color: #888; margin-left: 5px;">${timeNow}</span><br> ${data.msg}</div>`;
-        m.scrollTop = m.scrollHeight;
+        const m = document.getElementById('chat-msgs'); const timeNow = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        m.innerHTML += `<div style="background:${data.user===myName?'rgba(255,140,0,0.1)':'#2a2a2a'}; padding:8px 12px; border-radius:10px; margin-bottom:5px;"><b>${data.user}</b> <span style="font-size: 0.75rem; color: #888; margin-left: 5px;">${timeNow}</span><br> ${data.msg}</div>`; m.scrollTop = m.scrollHeight;
         if (!document.getElementById('chat-sidebar').classList.contains('open') && data.user !== myName) toggleSidebar('chat-sidebar');
     });
 
-    function togglePin(wrapperId) {
-        const grid = document.getElementById('video-grid');
-        const target = document.getElementById(wrapperId);
-        if (target.classList.contains('pinned')) { target.classList.remove('pinned'); grid.classList.remove('has-pinned'); } 
-        else { document.querySelectorAll('.video-wrapper').forEach(w => w.classList.remove('pinned')); target.classList.add('pinned'); grid.classList.add('has-pinned'); }
-    }
-
+    function togglePin(wrapperId) { const grid = document.getElementById('video-grid'); const target = document.getElementById(wrapperId); if (target.classList.contains('pinned')) { target.classList.remove('pinned'); grid.classList.remove('has-pinned'); } else { document.querySelectorAll('.video-wrapper').forEach(w => w.classList.remove('pinned')); target.classList.add('pinned'); grid.classList.add('has-pinned'); } }
     function toggleInvite() { const p = document.getElementById('invite-popup'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; }
     function copyLink() { navigator.clipboard.writeText(window.location.href); alert("Link copied!"); }
     function sendChat() { const i = document.getElementById('chatIn'); if (i.value.trim()) { socket.emit('chat-msg', { room, user: myName, msg: i.value }); i.value = ''; } }
