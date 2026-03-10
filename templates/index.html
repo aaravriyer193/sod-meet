@@ -44,15 +44,18 @@
         .video-wrapper.pinned { flex: 0 0 100%; max-width: 100%; height: 65vh; max-height: 65vh; order: -1; border-color: var(--orange); margin-bottom: 10px; }
         #video-grid.has-pinned .video-wrapper:not(.pinned) { flex: 0 1 200px; max-width: 250px; height: auto; aspect-ratio: 16/9; }
 
+        /* Video Core */
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); transition: filter 0.3s; }
         video.is-screen { transform: scaleX(1) !important; object-fit: contain !important; background: #000; position: relative; z-index: 10; }
         
+        /* Native Shaders */
         .f-noir video { filter: grayscale(100%) contrast(150%); }
         .f-sepia video { filter: sepia(100%) contrast(110%); }
         .f-cyber video { filter: hue-rotate(90deg) saturate(250%) contrast(120%); }
         .f-blur video { filter: blur(8px); }
         .f-thermal video { filter: url(#svg-thermal); }
 
+        /* Overlays & Badges */
         .avatar-view { position: absolute; inset: 0; background: #222; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5; }
         .cam-off .avatar-view { display: flex; }
         .initials { width: 70px; height: 70px; background: var(--orange); color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; }
@@ -64,6 +67,7 @@
         .icon-badge:hover { background: var(--orange); color: black; }
         .icon-badge.red { background: rgba(234, 67, 53, 0.9); color: white; }
 
+        /* Host Controls */
         .host-menu-container { position: absolute; top: 10px; right: 10px; z-index: 20; }
         .host-menu-btn { background: rgba(0,0,0,0.6); color: white; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(4px); transition: 0.2s; }
         .host-menu-btn:hover { background: rgba(0,0,0,0.8); color: var(--orange); }
@@ -83,12 +87,14 @@
         #bottom-info { position: fixed; bottom: 35px; left: 30px; color: white; z-index: 90; font-weight: 600; display: flex; align-items: center; gap: 15px; }
         #host-badge { background: var(--orange); color: black; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; display: none; font-weight: 800; letter-spacing: 1px; }
 
+        /* Bottom Controls */
         #controls { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); background: rgba(26, 26, 30, 0.9); backdrop-filter: blur(10px); padding: 12px 25px; border-radius: 50px; display: flex; gap: 15px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 100; align-items: center; }
         .circle-btn { width: 48px; height: 48px; border-radius: 50%; border: none; background: #2e2e33; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; flex-shrink: 0; }
         .circle-btn:hover { background: #3e3e44; transform: scale(1.05); }
         .circle-btn.red { background: var(--red); }
         .circle-btn.active { background: rgba(234, 67, 53, 0.2); color: var(--red); border: 1px solid var(--red); }
         
+        /* Sidebars */
         .sidebar { position: fixed; top: 0; right: -360px; width: 350px; height: 100vh; background: rgba(26, 26, 30, 0.95); backdrop-filter: blur(15px); border-left: 1px solid #333; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; display: flex; flex-direction: column; }
         .sidebar.open { right: 0; box-shadow: -10px 0 30px rgba(0,0,0,0.5); }
         .side-head { padding: 25px 20px; font-weight: bold; font-size: 1.2rem; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
@@ -97,6 +103,7 @@
         .chat-input { padding: 20px; border-top: 1px solid #333; display: flex; gap: 10px; }
         .chat-input input { flex: 1; background: #111; border: 1px solid #444; color: white; padding: 10px 15px; border-radius: 20px; outline: none; }
         
+        /* Sidebar Grids */
         .sidebar-content { padding: 20px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start; }
         .filter-header { font-size: 0.9rem; color: var(--orange); margin: 15px 0 5px 0; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; grid-column: span 2;}
         .filter-card { background: #111; border: 2px solid #333; border-radius: 12px; padding: 10px; text-align: center; cursor: pointer; transition: 0.2s; font-weight: bold; font-size: 0.85rem; }
@@ -233,16 +240,19 @@
     let rawVideoStream, rawAudioStream, processedAudioStream, localStream, screenStream, deepAR;
     let isSharingScreen = false, peers = {}; 
     
+    // The WebRTC Mesh Fix: ICE Candidate Queues
     let iceCandidatesQueue = {};
     
     const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
     
+    // Voice Changer Setup
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let audioSourceNode, activeVoiceEffectNode;
     const audioDestinationNode = audioCtx.createMediaStreamDestination();
 
     document.getElementById('meet-link').innerText = window.location.href;
 
+    // --- KEYBOARD SHORTCUTS ---
     document.addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key.toLowerCase() === 'd') {
             e.preventDefault();
@@ -256,6 +266,7 @@
         }
     });
 
+    // --- INITIALIZE PRE-JOIN CAMERA ---
     async function initPrejoin() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -286,14 +297,16 @@
         btn.innerHTML = track.enabled ? '<span class="material-symbols-outlined">videocam</span>' : '<span class="material-symbols-outlined">videocam_off</span>';
     }
 
+    // --- EXECUTE JOIN FROM GREEN ROOM ---
     function executeJoin() {
         document.getElementById('prejoin-overlay').style.display = 'none';
         document.getElementById('waiting-overlay').style.display = 'flex';
         
+        // Build the Voice Changer output stream
         if (rawAudioStream && rawAudioStream.getAudioTracks().length > 0) {
             if(audioCtx.state === 'suspended') audioCtx.resume();
             audioSourceNode = audioCtx.createMediaStreamSource(rawAudioStream);
-            audioSourceNode.connect(audioDestinationNode);
+            audioSourceNode.connect(audioDestinationNode); // Default: pass-through
             processedAudioStream = audioDestinationNode.stream;
         } else {
             const emptyAudio = audioCtx.createMediaStreamDestination().stream;
@@ -308,19 +321,23 @@
         document.getElementById('localVideo').srcObject = localStream;
         document.getElementById('local-init').innerText = myName[0].toUpperCase();
         
+        // Sync main buttons with prejoin choices
         if (rawVideoStream && !rawVideoStream.getVideoTracks()[0].enabled) forceSetCam(false);
         if (rawAudioStream && !rawAudioStream.getAudioTracks()[0].enabled) forceSetMic(false);
         
         socket.emit('request-join', { room, userId: myId, name: myName });
     }
 
+    // --- VOICE CHANGER ENGINE ---
     function applyVoice(effect, el) {
+        // Highlight active UI safely now that ID is restored
         const cards = document.getElementById('appearance-content').querySelectorAll('.filter-card');
-        for(let i=0; i<4; i++) cards[i].classList.remove('active'); 
+        for(let i=0; i<4; i++) cards[i].classList.remove('active'); // First 4 are audio
         el.classList.add('active');
 
         if (!audioSourceNode) return;
         
+        // Disconnect old routing
         audioSourceNode.disconnect();
         if (activeVoiceEffectNode) {
             activeVoiceEffectNode.disconnect();
@@ -340,11 +357,12 @@
             feedback.connect(delay);
             
             audioSourceNode.connect(delay);
-            audioSourceNode.connect(audioDestinationNode);
-            delay.connect(audioDestinationNode);
+            audioSourceNode.connect(audioDestinationNode); // Dry signal
+            delay.connect(audioDestinationNode);           // Wet signal
             activeVoiceEffectNode = delay;
         }
         else if (effect === 'robot') {
+            // Ring Modulation for Dalek/Robot sound
             const osc = audioCtx.createOscillator();
             osc.type = 'sawtooth';
             osc.frequency.value = 50;
@@ -357,6 +375,7 @@
             activeVoiceEffectNode = gain;
         }
         else if (effect === 'radio') {
+            // Bandpass filter for Telephone EQ
             const filter = audioCtx.createBiquadFilter();
             filter.type = 'bandpass';
             filter.frequency.value = 1000;
@@ -368,6 +387,7 @@
         }
     }
 
+    // --- VIDEO FILTER ENGINE (DeepAR v5 + Native) ---
     async function applyFilter(type, filterId, el) {
         const cards = document.getElementById('appearance-content').querySelectorAll('.filter-card');
         for(let i=4; i<cards.length; i++) cards[i].classList.remove('active');
@@ -380,7 +400,7 @@
         if (type === 'clear' || type === 'css') {
             if(deepAR) {
                 await deepAR.clearEffect();
-                deepAR.stopCamera();
+                deepAR.stopCamera(); 
             }
             
             if (rawVideoStream) {
@@ -406,7 +426,8 @@
                     });
                 }
                 
-                await deepAR.startCamera();
+                await deepAR.startCamera(); 
+                
                 const url = `https://cdn.jsdelivr.net/npm/deepar/effects/${filterId}`;
                 await deepAR.switchEffect(url);
                 
@@ -425,11 +446,12 @@
                 
                 socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
             } catch(err) {
-                console.error("DeepAR effect failed:", err);
+                console.error("DeepAR effect failed to load. The .deepar file might not exist.", err);
             }
         }
     }
 
+    // --- ROOM LOGIC ---
     socket.on('join-request', data => {
         const toast = document.createElement('div');
         toast.className = 'toast'; toast.id = `req-${data.userId}`;
@@ -489,6 +511,7 @@
     function toggleMic() { forceSetMic(!rawAudioStream.getAudioTracks()[0].enabled); }
     function toggleCam() { forceSetCam(document.getElementById('local-wrapper').classList.contains('cam-off')); }
 
+    // --- WEBRTC MESH NETWORKING (With robust ICE Queuing Fix) ---
     socket.on('user-joined', data => initConnection(data.userId, data.name, true));
     
     socket.on('signal', async data => {
@@ -502,6 +525,7 @@
                 await pc.setLocalDescription(answer);
                 socket.emit('signal', { target: data.sender, sender: myId, sdp: pc.localDescription });
             }
+            // Process queued candidates now that SDP is set
             if (iceCandidatesQueue[data.sender]) {
                 iceCandidatesQueue[data.sender].forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)));
                 delete iceCandidatesQueue[data.sender];
@@ -589,6 +613,7 @@
         }
     }
 
+    // --- SCREEN SHARING (Fixed Mirroring & Audio) ---
     async function toggleScreen() { 
         if (!isSharingScreen) {
             try {
@@ -629,6 +654,7 @@
         if (localWrap.classList.contains('pinned')) togglePin('local-wrapper');
     }
 
+    // --- UI HELPERS ---
     function toggleSidebar(id) {
         document.querySelectorAll('.sidebar').forEach(el => { if (el.id !== id) el.classList.remove('open'); });
         document.getElementById(id).classList.toggle('open');
