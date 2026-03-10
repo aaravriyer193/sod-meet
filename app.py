@@ -22,10 +22,13 @@ google = oauth.register(
     client_kwargs={'scope': 'openid email profile'}
 )
 
-# --- RESTRICTED ROOMS LOGIC ---
+# --- SECURITY & ROOMS LOGIC ---
 RESTRICTED_ROOMS = ['chairs', 'secretariat', 'interviews', 'jobless', 'safa', 'general', 'informal']
 
-# BULLETPROOF EMAIL PARSING: Strips accidental spaces and makes everything lowercase
+# Master Admin (Always allowed)
+MASTER_ADMIN = 'sg.sodmun@gmail.com'
+
+# Bulletproof email parsing (removes spaces, makes lowercase)
 raw_emails = os.getenv('ALLOWED_EMAILS', '').split(',')
 ALLOWED_EMAILS = [email.strip().lower() for email in raw_emails if email.strip()]
 
@@ -45,7 +48,6 @@ def auth_callback():
     if user_info:
         session['user'] = user_info
     
-    # Send them back to the room they tried to access
     next_url = session.pop('next_url', '/')
     return redirect(next_url)
 
@@ -55,22 +57,24 @@ def home():
 
 @app.route('/join')
 def create_room():
+    if 'user' not in session:
+        session['next_url'] = url_for('create_room')
+        return redirect(url_for('login'))
+        
     room_id = f"{uuid.uuid4().hex[:3]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:3]}"
     return redirect(url_for('meeting', room_id=room_id))
 
 @app.route('/<room_id>')
 def meeting(room_id):
-    # Security Check
+    if 'user' not in session:
+        session['next_url'] = request.url
+        return redirect(url_for('login'))
+        
+    user_email = session['user'].get('email', '').strip().lower()
+
+    # If it's a restricted room, check if they are the Master Admin OR in the allowed list
     if room_id in RESTRICTED_ROOMS:
-        if 'user' not in session:
-            session['next_url'] = request.url
-            return redirect(url_for('login'))
-        
-        # Get the Google email, strip spaces, and make it lowercase to match safely
-        user_email = session['user'].get('email', '').strip().lower()
-        
-        if user_email not in ALLOWED_EMAILS:
-            # Styled Dark Mode Access Denied Screen
+        if user_email != MASTER_ADMIN and user_email not in ALLOWED_EMAILS:
             return f"""
             <html>
             <head>
@@ -88,7 +92,6 @@ def meeting(room_id):
             </html>
             """, 403
 
-    # Pass the Google name and DeepAR key to the frontend
     user_name = session.get('user', {}).get('name', '')
     deepar_key = os.getenv('DEEPAR_KEY', '')
     return render_template('index.html', room_id=room_id, user_name=user_name, deepar_key=deepar_key)
@@ -125,6 +128,7 @@ def on_join(data):
     name = data['name']
     user_sessions[request.sid] = {'room': room, 'userId': user_id}
     join_room(room)
+    # Broadcast to everyone in the room that a new user joined
     emit('user-joined', {'userId': user_id, 'name': name}, to=room, include_self=False)
 
 @socketio.on('signal')
