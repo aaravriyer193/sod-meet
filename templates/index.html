@@ -413,16 +413,15 @@
         }
     }
 
-    // THE MASTER EFFECT ENGINE (Handles DeepAR, MediaPipe BG, and CSS Shaders)
+    // THE MASTER EFFECT ENGINE
     async function applyEffect(type, value, el) {
         const cards = document.getElementById('appearance-content').querySelectorAll('.filter-card');
         cards.forEach(c => { if(!c.innerText.includes('🎙️') && !c.innerText.includes('🤖') && !c.innerText.includes('🕳️') && !c.innerText.includes('📻')) c.classList.remove('active'); });
         if(el.tagName !== 'DIV') el.parentElement.classList.add('active'); else el.classList.add('active');
 
         const wrapper = document.getElementById('local-wrapper');
-        wrapper.className = wrapper.className.replace(/\bf-\S+/g, ''); // Clear CSS
+        wrapper.className = wrapper.className.replace(/\bf-\S+/g, '');
 
-        // Stop engines to save CPU
         if (deepAR) { await deepAR.clearEffect(); deepAR.stopCamera(); }
         isBgActive = false;
 
@@ -435,7 +434,10 @@
             try {
                 if (!deepAR) deepAR = await deepar.initialize({ licenseKey: '{{ deepar_key }}', previewElement: document.getElementById('deepar-canvas-container') });
                 await deepAR.startCamera(); 
-                await deepAR.switchEffect(`https://cdn.jsdelivr.net/npm/deepar/effects/${value}`);
+                
+                // FIX: Pulling verified effect files directly from DeepAR's official GitHub CDN to bypass NPM 404 issues
+                const url = `https://cdn.jsdelivr.net/gh/DeepARSDK/quickstart-web-js-npm@main/effects/${value}`;
+                await deepAR.switchEffect(url);
                 
                 const arStream = document.querySelector('#deepar-canvas-container canvas').captureStream(30);
                 updateVideoTrack(arStream.getVideoTracks()[0]);
@@ -463,7 +465,6 @@
         }
     }
 
-    // MediaPipe Virtual Background Engine
     async function processMediaPipeLoop() {
         if (!isBgActive || rawVideoEl.paused || rawVideoEl.ended) return;
         await selfieSegmentation.send({image: rawVideoEl});
@@ -473,15 +474,9 @@
     function handleMediaPipeResults(results) {
         bgCtx.save();
         bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-        
-        // 1. Draw the segmentation mask
         bgCtx.drawImage(results.segmentationMask, 0, 0, bgCanvas.width, bgCanvas.height);
-        
-        // 2. Draw person inside the mask
         bgCtx.globalCompositeOperation = 'source-in';
         bgCtx.drawImage(results.image, 0, 0, bgCanvas.width, bgCanvas.height);
-        
-        // 3. Draw background behind the person
         bgCtx.globalCompositeOperation = 'destination-over';
         if (isBgBlur) {
             bgCtx.filter = 'blur(15px)';
@@ -493,7 +488,6 @@
         bgCtx.restore();
     }
 
-    // --- STANDARD ROOM LOGIC ---
     socket.on('join-request', data => {
         const toast = document.createElement('div'); toast.className = 'toast'; toast.id = `req-${data.userId}`;
         toast.innerHTML = `<div><b>${data.name}</b> wants to join.</div><div class="toast-actions"><button class="toast-btn t-admit" onclick="handleRequest('${data.userId}', true)">Admit</button><button class="toast-btn t-deny" onclick="handleRequest('${data.userId}', false)">Deny</button></div>`;
