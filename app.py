@@ -10,7 +10,9 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-dev-key')
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+
+# manage_session=False ensures Flask and SocketIO share the same Google Login data perfectly
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', manage_session=False)
 
 # --- OAUTH SETUP ---
 oauth = OAuth(app)
@@ -63,6 +65,9 @@ def create_room():
 
 @app.route('/<room_id>')
 def meeting(room_id):
+    # BULLETPROOF SANITIZATION: Forces all links into the exact same parallel universe
+    room_id = room_id.strip().lower()
+
     if 'user' not in session:
         session['next_url'] = request.url
         return redirect(url_for('login'))
@@ -91,26 +96,37 @@ def meeting(room_id):
 # --- WEBRTC & SOCKET LOGIC ---
 @socketio.on('request-join')
 def request_join(data):
-    room = data['room']
+    room = data['room'].strip().lower()
     user_id = data['userId']
     name = data['name']
     sid = request.sid
     
+    # Grab the user's email directly from their Google Login session
+    user_email = session.get('user', {}).get('email', '').strip().lower()
+    is_master = (user_email == MASTER_ADMIN)
+    
     # Initialize room in JSON state if it doesn't exist
     if room not in active_rooms:
-        active_rooms[room] = {'host': user_id, 'participants': {}}
+        active_rooms[room] = {'host': None, 'participants': {}}
     
     user_sessions[sid] = {'room': room, 'userId': user_id, 'name': name}
     join_room(user_id) # Temporary personal room for direct signaling
     
-    # If room is empty or they are the first one, they become host automatically
-    if not active_rooms[room]['participants']:
+    current_host = active_rooms[room]['host']
+
+    # THE MASTER ADMIN OVERRIDE
+    # If the room has no host OR if the person joining is the Master Admin
+    if current_host is None or is_master:
         active_rooms[room]['host'] = user_id
+        
+        # If there was an old host and the Master Admin usurped them, demote the old host
+        if is_master and current_host and current_host != user_id:
+            emit('admin-action', {'action': 'demote-host'}, to=current_host)
+            
         emit('join-accepted', {'isHost': True}, to=user_id)
     else:
         # Ask current host for permission
-        host_id = active_rooms[room]['host']
-        emit('join-request', {'userId': user_id, 'name': name}, to=host_id)
+        emit('join-request', {'userId': user_id, 'name': name}, to=current_host)
 
 @socketio.on('admit-user')
 def admit_user(data):
@@ -122,12 +138,12 @@ def deny_user(data):
 
 @socketio.on('join-room')
 def on_join(data):
-    room = data['room']
+    room = data['room'].strip().lower()
     user_id = data['userId']
     name = data['name']
     sid = request.sid
     
-    join_room(room)
+    join_room(room) # Locks them into the strict WebRTC tunnel
     if room in active_rooms:
         active_rooms[room]['participants'][sid] = user_id
 
@@ -140,7 +156,9 @@ def handle_signal(data):
 
 @socketio.on('chat-msg')
 def handle_chat(data):
-    emit('chat-msg', data, to=data['room'])
+    room = data.get('room', '').strip().lower()
+    # STRICT TUNNELING: Chat messages can only go to people in this exact sanitized room
+    emit('chat-msg', data, to=room)
 
 @socketio.on('admin-action')
 def handle_admin(data):
@@ -166,7 +184,7 @@ def handle_disconnect():
                     active_rooms[room]['host'] = new_host_id
                     emit('admin-action', {'action': 'make-host'}, to=new_host_id)
                 else:
-                    del active_rooms[room] # Room is empty, destroy it
+                    active_rooms[room]['host'] = None # Room is empty
         
         # Tell everyone in the room to strictly delete this user's video element
         emit('user-left', {'userId': user_id}, to=room)
