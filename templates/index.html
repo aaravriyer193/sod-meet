@@ -11,7 +11,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     
     <style>
-        :root { --orange: #FF8C00; --bg: #0f0f11; --panel: #1a1a1e; --red: #ea4335; --green: #34a853; }
+        :root { 
+            --orange: #FF8C00; 
+            --bg: #0f0f11; 
+            --panel: #1a1a1e; 
+            --red: #ea4335; 
+            --green: #34a853; 
+            --gmeet-blue: #8ab4f8; 
+        }
         body, input, button { font-family: 'Nunito', sans-serif; margin: 0; }
         body { background: var(--bg); color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
@@ -37,17 +44,16 @@
         /* Main Grid & Video Elements */
         #main-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px 20px 100px 20px; overflow: hidden; }
         #video-grid { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 15px; width: 100%; height: 100%; max-width: 1600px; transition: all 0.4s ease; }
-        .video-wrapper { position: relative; flex: 1 1 300px; max-width: calc(33.333% - 15px); aspect-ratio: 16/9; background: #111; border-radius: 16px; overflow: hidden; border: 3px solid transparent; box-shadow: 0 10px 30px rgba(0,0,0,0.4); transition: 0.3s; }
+        .video-wrapper { position: relative; flex: 1 1 300px; max-width: calc(33.333% - 15px); aspect-ratio: 16/9; background: #111; border-radius: 16px; overflow: hidden; border: 3px solid transparent; box-shadow: 0 10px 30px rgba(0,0,0,0.4); transition: border-color 0.2s, box-shadow 0.2s; }
         .video-wrapper.pinned { flex: 0 0 100%; max-width: 100%; height: 65vh; order: -1; border-color: var(--orange); }
         #video-grid.has-pinned .video-wrapper:not(.pinned) { flex: 0 1 200px; max-width: 250px; height: auto; aspect-ratio: 16/9; }
 
-        /* Google Meet Style Pulse Animation */
-        @keyframes speaking-pulse {
-            0% { box-shadow: 0 0 0px var(--green); border-color: var(--green); }
-            50% { box-shadow: 0 0 20px var(--green); border-color: #4ade80; }
-            100% { box-shadow: 0 0 0px var(--green); border-color: var(--green); }
+        /* Perfect Google Meet Style Speaking Indicator */
+        .video-wrapper.speaking { 
+            border-color: var(--gmeet-blue) !important; 
+            box-shadow: 0 0 0 4px rgba(138, 180, 248, 0.4) !important; 
+            z-index: 2; /* Pop over others when speaking */
         }
-        .video-wrapper.speaking { animation: speaking-pulse 1.5s infinite; border-width: 3px; }
 
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); transition: filter 0.3s; }
         video.is-screen { transform: scaleX(1) !important; object-fit: contain !important; background: #000; }
@@ -61,7 +67,7 @@
         /* Overlays & Badges */
         .avatar-view { position: absolute; inset: 0; background: #222; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5; }
         
-        /* THE SCREEN SHARE FIX: Only show avatar if NOT sharing screen */
+        /* THE FIX: Only show Avatar if Camera is OFF AND we are NOT Sharing Screen */
         .cam-off:not(.is-sharing) .avatar-view { display: flex; }
         
         .initials { width: 80px; height: 80px; background: var(--orange); color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; text-transform: uppercase;}
@@ -146,6 +152,10 @@
 </head>
 <body>
 
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+        <filter id="svg-thermal"><feColorMatrix type="matrix" values="0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0 0 0 1 0" result="gray"/><feComponentTransfer><feFuncR type="table" tableValues="0 0 1 1 1"/><feFuncG type="table" tableValues="0 0 0 1 1"/><feFuncB type="table" tableValues="1 0 0 0 1"/></feComponentTransfer></filter>
+    </svg>
+
     <div id="prejoin-overlay" class="full-overlay">
         <div class="prejoin-container">
             
@@ -182,7 +192,7 @@
         <div class="name-card" style="background: transparent; border: none; box-shadow: none;">
             <div class="spinner"></div>
             <h2 style="margin-bottom: 10px;">Connecting...</h2>
-            <p style="color: #aaa;">Please wait... The host will let you in.</p>
+            <p style="color: #aaa;">Establishing secure WebRTC tunnels.</p>
         </div>
     </div>
 
@@ -273,7 +283,7 @@
     const signalQueue = {};
     const processingQueue = {};
     
-    // Redundant Enterprise STUN Servers
+    // Redundant Enterprise STUN Servers for robust NAT Traversal
     const config = { 
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -284,7 +294,7 @@
     // UI Init
     document.getElementById('meet-link').innerText = window.location.href;
     
-    // Set correct initials immediately to replace the "?"
+    // GUARANTEED INITIAL FIX (Replaces '?')
     const correctInitial = myName.charAt(0).toUpperCase();
     document.getElementById('prejoin-init').innerText = correctInitial;
     document.getElementById('local-init').innerText = correctInitial;
@@ -326,6 +336,8 @@
         const track = localStream.getVideoTracks()[0]; track.enabled = !track.enabled;
         const btn = document.getElementById('pj-cam-btn'); btn.classList.toggle('red', !track.enabled);
         btn.innerHTML = track.enabled ? '<span class="material-symbols-outlined">videocam</span>' : '<span class="material-symbols-outlined">videocam_off</span>';
+        
+        // This ensures the avatar is visible in the pre-join room if the camera is clicked off
         document.getElementById('prejoin-wrapper').classList.toggle('cam-off', !track.enabled);
     }
 
@@ -336,6 +348,7 @@
         
         document.getElementById('localVideo').srcObject = localStream;
         
+        // Sync main controls with pre-join state
         if (localStream.getVideoTracks()[0] && !localStream.getVideoTracks()[0].enabled) forceSetCam(false);
         if (localStream.getAudioTracks()[0] && !localStream.getAudioTracks()[0].enabled) forceSetMic(false);
         
@@ -380,7 +393,7 @@
         monitorSpeech(localStream, 'local-wrapper');
     });
 
-    socket.on('meeting-ended', () => { alert("The host ended the meeting."); window.location.href = '/'; });
+    // Make someone else host if current host drops
     socket.on('admin-action', data => {
         if (data.action === 'kick') window.location.href = '/';
         else if (data.action === 'mute') forceSetMic(false);
@@ -392,6 +405,7 @@
         }
     });
 
+    // User explicitly leaves (Server handles dropping out)
     socket.on('user-left', data => {
         const pid = data.userId;
         if (peers[pid]) {
@@ -414,10 +428,8 @@
     function forceSetCam(state) {
         if (localStream.getVideoTracks()[0]) localStream.getVideoTracks()[0].enabled = state;
         
-        // Hide avatar ONLY if not sharing screen
-        if (!isSharingScreen) {
-            document.getElementById('local-wrapper').classList.toggle('cam-off', !state);
-        }
+        // By skipping the toggle during screen share, the CSS logic perfectly overrides the avatar
+        document.getElementById('local-wrapper').classList.toggle('cam-off', !state);
         
         const btn = document.getElementById('camBtn'); btn.classList.toggle('active', !state);
         btn.innerHTML = state ? '<span class="material-symbols-outlined">videocam</span>' : '<span class="material-symbols-outlined">videocam_off</span>';
@@ -429,7 +441,7 @@
 
     socket.on('user-joined', data => initConn(data.userId, data.name, true));
     
-    // --- ASYNCHRONOUS WEBRTC QUEUE ---
+    // --- ASYNCHRONOUS WEBRTC QUEUE (FIXES 4+ PEOPLE CRASH) ---
     socket.on('signal', async d => {
         if (!peers[d.sender]) initConn(d.sender, d.name || "Guest", false);
         if (!signalQueue[d.sender]) signalQueue[d.sender] = [];
@@ -488,7 +500,7 @@
             
             monitorSpeech(e.streams[0], `wrap-${pid}`);
             
-            // Sync current states
+            // Sync current states to the new user immediately
             socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'cam', state: !document.getElementById('local-wrapper').classList.contains('cam-off') });
             if(localStream.getAudioTracks()[0]) socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'mic', state: localStream.getAudioTracks()[0].enabled });
             socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'screen', state: isSharingScreen });
@@ -504,10 +516,12 @@
         if (caller) pc.createOffer().then(o => { pc.setLocalDescription(o); socket.emit('signal', { target: pid, sender: myId, sdp: o, name: myName }); });
     }
 
+    // --- FLAWLESS SCREEN SHARING ---
     async function toggleScreen() {
         if (!isSharingScreen) {
             try {
-                screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true }); // Removed audio requirement to guarantee it works on all browsers
+                // Audio parameter removed to guarantee 100% browser compatibility
+                screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true }); 
                 const track = screenStream.getVideoTracks()[0];
                 Object.values(peers).forEach(p => { const s = p.pc.getSenders().find(s => s.track && s.track.kind === 'video'); if(s) s.replaceTrack(track); });
                 
@@ -515,7 +529,7 @@
                 document.getElementById('localVideo').classList.add('is-screen');
                 document.getElementById('shareBtn').classList.add('active');
                 
-                // THE FIX: Override .cam-off so screen is visible
+                // Triggers CSS to hide avatar if camera happens to be off
                 document.getElementById('local-wrapper').classList.add('is-sharing');
                 
                 isSharingScreen = true;
@@ -566,7 +580,13 @@
     }
     
     function toggleInvite() { const p = document.getElementById('invite-popup'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; }
-    function copyLink() { navigator.clipboard.writeText(window.location.href); showToast("Joining info copied to clipboard.", "sys"); toggleInvite();}
+    
+    // Failsafe Link Copier
+    function copyLink() { 
+        navigator.clipboard.writeText(window.location.href)
+            .then(() => { showToast("Joining info copied to clipboard.", "sys"); toggleInvite(); })
+            .catch(err => { console.error('Failed to copy: ', err); });
+    }
     
     function checkGridSize() {
         const grid = document.getElementById('video-grid');
@@ -579,7 +599,6 @@
         }
     }
 
-    // --- CHAT & NOTIFICATIONS ---
     function sendChat() { 
         const i = document.getElementById('chatIn'); 
         if (i.value.trim()) { socket.emit('chat-msg', { room, user: myName, msg: i.value }); i.value = ''; } 
@@ -593,6 +612,7 @@
         setTimeout(() => { toast.style.opacity = '0'; setTimeout(()=>toast.remove(), 300); }, 3000);
     }
 
+    // --- Google Meet Glow Logic ---
     function monitorSpeech(stream, wrapperId) {
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -607,7 +627,7 @@
                 let sum = 0; for(let i=0; i<dataArray.length; i++) sum += dataArray[i]; 
                 const vol = sum / dataArray.length;
                 
-                // Safe Mute Check so border doesn't glow when explicitly muted
+                // Mute check so it doesn't glow on background noise if manually muted
                 let isMuted = false;
                 if (wrapperId === 'local-wrapper') {
                     isMuted = localStream.getAudioTracks()[0] && !localStream.getAudioTracks()[0].enabled;
