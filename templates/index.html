@@ -19,22 +19,34 @@
         body { background: var(--bg); color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
         /* Overlays */
-        .full-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        .full-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; align-items: center; justify-content: center; overflow-y: auto; }
         
-        /* Prejoin Room */
-        .prejoin-container { display: flex; gap: 40px; align-items: center; justify-content: center; max-width: 1100px; width: 90%; flex-wrap: wrap; }
-        .prejoin-video-box { flex: 1; min-width: 320px; max-width: 640px; background: #000; border-radius: 20px; overflow: hidden; position: relative; aspect-ratio: 16/9; border: 2px solid #333; box-shadow: 0 30px 60px rgba(0,0,0,0.8); }
+        /* FIXED PRE-JOIN "GREEN ROOM" LAYOUT */
+        .prejoin-container { display: flex; flex-direction: row; gap: 40px; align-items: center; justify-content: center; max-width: 1200px; width: 95%; margin: auto; padding: 40px 0; }
+        
+        .prejoin-video-box { flex: 1.5; min-width: 320px; background: #111; border-radius: 16px; overflow: hidden; position: relative; aspect-ratio: 16/9; border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .prejoin-video-box video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        .prejoin-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; background: rgba(0,0,0,0.7); padding: 12px 24px; border-radius: 40px; backdrop-filter: blur(15px); }
         
-        .name-card { background: var(--panel); padding: 40px; border-radius: 30px; border: 1px solid rgba(255,140,0,0.2); text-align: center; width: 380px; }
+        .prejoin-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 40px; backdrop-filter: blur(10px); }
+        .prejoin-controls .circle-btn { width: 50px; height: 50px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); }
+        .prejoin-controls .circle-btn:hover { background: rgba(255,255,255,0.2); }
+        .prejoin-controls .circle-btn.red { background: var(--red); border-color: var(--red); }
+        
+        .name-card { flex: 1; max-width: 400px; background: var(--panel); padding: 40px; border-radius: 20px; border: 1px solid #333; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; }
+        
+        /* Force logo size so it never breaks layout again */
+        .name-card img { width: 80px !important; height: 80px !important; object-fit: contain; margin-bottom: 20px; border-radius: 12px; }
+        .name-card h2 { margin: 0 0 15px 0; font-size: 1.5rem; }
         .name-card input { width: 100%; padding: 15px; margin: 15px 0; border-radius: 12px; border: 2px solid var(--green); background: #111; color: #fff; text-align: center; font-weight: 800; cursor: not-allowed; }
-        .btn-primary { background: var(--orange); color: black; border: none; padding: 18px; width: 100%; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; font-size: 1.1rem; box-shadow: 0 10px 20px rgba(255, 140, 0, 0.2); }
-        .btn-primary:hover { background: #ff9d26; transform: translateY(-3px); }
-        .btn-secondary { background: transparent; color: var(--orange); border: 2px solid var(--orange); padding: 15px; width: 100%; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; margin-top: 15px;}
-        .btn-secondary:hover { background: rgba(255,140,0,0.1); }
+        
+        .btn-primary { background: var(--orange); color: black; border: none; padding: 16px; width: 100%; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; font-size: 1.1rem; box-shadow: 0 10px 20px rgba(255, 140, 0, 0.2); }
+        .btn-primary:hover { background: #ff9d26; transform: translateY(-2px); }
+        .btn-secondary { background: transparent; color: #aaa; border: 1px solid #444; padding: 12px; width: 100%; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; margin-top: 15px;}
+        .btn-secondary:hover { background: #222; color: #fff; border-color: #666; }
 
         .auth-badge { background: rgba(52, 168, 83, 0.15); color: var(--green); padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; margin-bottom: 10px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--green); }
+        
+        /* Waiting Room Spinner */
         .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,140,0,0.2); border-top: 4px solid var(--orange); border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -100,7 +112,11 @@
         #bottom-info { position: fixed; bottom: 35px; left: 30px; color: white; z-index: 90; font-weight: 600; display: flex; align-items: center; gap: 15px; }
         #host-badge { background: var(--orange); color: black; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; display: none; font-weight: 800; letter-spacing: 1px; }
 
-        @media (max-width: 900px) { .prejoin-container { flex-direction: column; } .name-card { width: 100%; max-width: 400px; } }
+        @media (max-width: 900px) { 
+            .prejoin-container { flex-direction: column; padding: 20px;} 
+            .prejoin-video-box { width: 100%; max-width: 100%; }
+            .name-card { width: 100%; max-width: 100%; } 
+        }
     </style>
 </head>
 <body>
@@ -124,15 +140,17 @@
             </div>
             
             <div class="name-card">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="SODMeet">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="SODMeet" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 15px;">
                 {% if user_name %}
                     <h2>Ready to Join?</h2>
                     <div class="auth-badge"><span class="material-symbols-outlined">verified</span> Verified by Google</div>
                     <input type="text" id="username" value="{{ user_name }}" readonly>
                     <button class="btn-primary" onclick="executeJoin()">Join Secure Meeting</button>
-                    <button class="btn-secondary" onclick="toggleSidebar('appearance-sidebar')">Apply Filters Before Joining</button>
+                    <button class="btn-secondary" onclick="toggleSidebar('appearance-sidebar')">✨ Apply Effects Before Joining</button>
+                    <p style="margin-top: 15px; font-size: 0.75rem; color: #666; margin-bottom: 0;">Shortcuts: Ctrl+D (Mic) | Ctrl+E (Camera)</p>
                 {% else %}
                     <h2>Login Required</h2>
+                    <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px;">You must sign in with Google to enter this secure room.</p>
                     <button class="google-btn" onclick="window.location.href='/login'">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google">
                         Sign in with Google
@@ -235,8 +253,10 @@
     const socket = io();
     const room = "{{ room_id }}";
     const myId = Math.random().toString(36).substring(7);
-    const myName = "{{ user_name }}";
+    const nameInput = document.getElementById('username');
+    const myName = nameInput ? nameInput.value : "";
     
+    let isHost = false;
     let rawVideoStream, rawAudioStream, processedAudioStream, processedVideoTrack;
     let localStream, screenStream, deepAR;
     let isSharingScreen = false, peers = {}; 
@@ -252,7 +272,7 @@
     const audioDest = audioCtx.createMediaStreamDestination();
     let voiceSource, voiceNode;
 
-    // MediaPipe Virtual Background
+    // MediaPipe Virtual Background Globals
     let selfie;
     const bgCanvas = document.getElementById('bg-canvas');
     const bgCtx = bgCanvas.getContext('2d');
@@ -336,7 +356,6 @@
 
     function updateVideoTrack(newTrack) {
         processedVideoTrack = newTrack;
-        // Update pre-join if not joined yet
         if (!hasJoined) {
             document.getElementById('prejoin-video').srcObject = new MediaStream([newTrack]);
         } else {
@@ -366,11 +385,8 @@
             try {
                 if (!deepAR) deepAR = await deepar.initialize({ licenseKey: '{{ deepar_key }}', previewElement: document.getElementById('deepar-canvas-container') });
                 await deepAR.startCamera(); 
-                
-                // FIX: Pulling verified effect files directly from DeepAR's official open-source GitHub raw data
                 const url = `https://raw.githubusercontent.com/DeepARSDK/quickstart-web-js-npm/main/effects/${val}`;
                 await deepAR.switchEffect(url);
-                
                 updateVideoTrack(document.querySelector('#deepar-canvas-container canvas').captureStream(30).getVideoTracks()[0]);
                 if(hasJoined) socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
             } catch(err) { console.error("DeepAR effect failed:", err); }
@@ -386,7 +402,6 @@
             updateVideoTrack(bgCanvas.captureStream(30).getVideoTracks()[0]);
             if(hasJoined) socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
             
-            // Wait for video to be fully ready before sending to MediaPipe
             if(rawVideoEl.readyState >= 2) processMediaPipeLoop();
             else rawVideoEl.onloadeddata = () => processMediaPipeLoop();
         }
@@ -408,7 +423,6 @@
         bgCtx.restore();
     }
 
-    // --- STANDARD ROOM LOGIC ---
     socket.on('join-request', data => {
         const toast = document.createElement('div'); toast.className = 'toast'; toast.id = `req-${data.userId}`;
         toast.innerHTML = `<div><b>${data.name}</b> wants to join.</div><div class="toast-actions"><button class="toast-btn t-admit" onclick="handleRequest('${data.userId}', true)">Admit</button><button class="toast-btn t-deny" onclick="handleRequest('${data.userId}', false)">Deny</button></div>`;
@@ -463,19 +477,15 @@
     // --- ASYNCHRONOUS WEBRTC QUEUE (FIXES 4+ PEOPLE CRASH) ---
     socket.on('signal', async d => {
         if (!peers[d.sender]) initConn(d.sender, d.name || "Guest", false);
-        
         if (!signalQueue[d.sender]) signalQueue[d.sender] = [];
         signalQueue[d.sender].push(d);
-        
         processSignalQueue(d.sender);
     });
 
     async function processSignalQueue(senderId) {
         if (processingQueue[senderId]) return;
         processingQueue[senderId] = true;
-        
         const pc = peers[senderId].pc;
-        
         while (signalQueue[senderId].length > 0) {
             const d = signalQueue[senderId].shift();
             try {
@@ -486,9 +496,7 @@
                         await pc.setLocalDescription(ans);
                         socket.emit('signal', { target: senderId, sender: myId, sdp: pc.localDescription });
                     }
-                } else if (d.candidate) {
-                    await pc.addIceCandidate(new RTCIceCandidate(d.candidate));
-                }
+                } else if (d.candidate) { await pc.addIceCandidate(new RTCIceCandidate(d.candidate)); }
             } catch(e) { console.error("WebRTC Error:", e); }
         }
         processingQueue[senderId] = false;
