@@ -23,7 +23,7 @@ google = oauth.register(
 )
 
 # --- SECURITY & ROOMS LOGIC ---
-RESTRICTED_ROOMS = ['chairs', 'secretariat', 'interviews', 'jobless', 'safa', 'general', 'informal']
+RESTRICTED_ROOMS = ['secretariat']
 MASTER_ADMIN = 'sg.sodmun@gmail.com'
 
 raw_emails = os.getenv('ALLOWED_EMAILS', '').split(',')
