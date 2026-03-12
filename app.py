@@ -79,7 +79,7 @@ def meeting(room_id):
                     <div style="font-size: 50px; margin-bottom: 10px;">🔒</div>
                     <h1 style="color:#ea4335; margin-top:0;">Access Denied</h1>
                     <p style="color:#aaa; font-size:1.1rem; line-height: 1.5;">The account <b>{user_email}</b> lacks clearance for <b>/{room_id}</b>.</p>
-                    <button onclick="window.location.href='/'" style="background:#FF8C00; color:black; border:none; padding:12px 25px; border-radius:10px; font-weight:bold; cursor:pointer; margin-top:20px; font-size:1rem; width: 100%;">Return to Dashboard</button>
+                    <button onclick="window.location.href='/'" style="background:#FF8C00; color:black; border:none; padding:12px 25px; border-radius:10px; font-weight:bold; cursor:pointer; margin-top:20px; font-size:1rem; width: 100%;">Return</button>
                 </div>
             </body>
             </html>
