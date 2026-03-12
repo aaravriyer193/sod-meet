@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SODMeet | Professional Video Calling</title>
     <link rel="icon" href="{{ url_for('static', filename='logo.png') }}">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -19,63 +19,66 @@
             --green: #34a853; 
             --gmeet-blue: #8ab4f8; 
         }
+        
+        * { box-sizing: border-box; }
         body, input, button { font-family: 'Nunito', sans-serif; margin: 0; }
         body { background: var(--bg); color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
         /* Overlays & Prejoin */
-        .full-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; align-items: center; justify-content: center; flex-direction: column; overflow-y: auto; }
-        .prejoin-container { display: flex; gap: 40px; align-items: center; justify-content: center; max-width: 1100px; width: 90%; flex-wrap: wrap; padding: 40px 0; }
-        .prejoin-video-box { flex: 1.5; min-width: 320px; background: #000; border-radius: 20px; overflow: hidden; position: relative; aspect-ratio: 16/9; border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
-        .prejoin-video-box video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        .prejoin-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; background: rgba(0,0,0,0.7); padding: 12px 24px; border-radius: 40px; backdrop-filter: blur(15px); }
+        .full-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; align-items: center; justify-content: center; flex-direction: column; overflow-y: auto; padding: 20px; }
         
-        .name-card { flex: 1; max-width: 400px; background: var(--panel); padding: 40px; border-radius: 20px; border: 1px solid #333; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; }
-        .name-card img { width: 80px !important; height: 80px !important; object-fit: contain; margin-bottom: 20px; border-radius: 12px; }
+        .prejoin-container { display: flex; gap: 30px; align-items: center; justify-content: center; max-width: 1100px; width: 100%; flex-wrap: wrap; }
+        
+        .prejoin-video-box { flex: 1.5; min-width: 300px; width: 100%; max-width: 600px; background: #000; border-radius: 20px; overflow: hidden; position: relative; aspect-ratio: 16/9; border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+        .prejoin-video-box video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        
+        .prejoin-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 40px; backdrop-filter: blur(15px); }
+        
+        .name-card { flex: 1; min-width: 300px; width: 100%; max-width: 400px; background: var(--panel); padding: 40px 30px; border-radius: 20px; border: 1px solid #333; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; }
+        .name-card img { width: 70px !important; height: 70px !important; object-fit: contain; margin-bottom: 20px; border-radius: 12px; }
         .name-card h2 { margin: 0 0 15px 0; font-size: 1.5rem; }
-        .name-card input { width: 100%; padding: 15px; margin: 15px 0; border-radius: 12px; border: 2px solid var(--green); background: #111; color: #fff; text-align: center; font-weight: 800; cursor: not-allowed; }
+        .name-card input { width: 100%; padding: 15px; margin: 15px 0; border-radius: 12px; border: 2px solid var(--green); background: #111; color: #fff; text-align: center; font-weight: 800; cursor: not-allowed; font-size: 1rem; }
         
         .btn-primary { background: var(--orange); color: black; border: none; padding: 16px; width: 100%; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; font-size: 1.1rem; box-shadow: 0 10px 20px rgba(255, 140, 0, 0.2); }
         .btn-primary:hover { background: #ff9d26; transform: translateY(-2px); }
         
         .auth-badge { background: rgba(52, 168, 83, 0.15); color: var(--green); padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; margin-bottom: 10px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--green); }
+        
+        .google-btn { background: white; color: #333; border: none; padding: 15px; width: 100%; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 1rem; }
+        .google-btn:hover { background: #f1f3f4; }
+        .google-btn img { width: 20px !important; height: 20px !important; margin: 0; }
+
         .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,140,0,0.2); border-top: 4px solid var(--orange); border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* Main Grid & Video Elements */
-        #main-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px 20px 100px 20px; overflow: hidden; }
+        #main-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 15px 15px 90px 15px; overflow: hidden; width: 100%; }
         #video-grid { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 15px; width: 100%; height: 100%; max-width: 1600px; transition: all 0.4s ease; }
+        
         .video-wrapper { position: relative; flex: 1 1 300px; max-width: calc(33.333% - 15px); aspect-ratio: 16/9; background: #111; border-radius: 16px; overflow: hidden; border: 3px solid transparent; box-shadow: 0 10px 30px rgba(0,0,0,0.4); transition: border-color 0.2s, box-shadow 0.2s; }
         .video-wrapper.pinned { flex: 0 0 100%; max-width: 100%; height: 65vh; order: -1; border-color: var(--orange); }
         #video-grid.has-pinned .video-wrapper:not(.pinned) { flex: 0 1 200px; max-width: 250px; height: auto; aspect-ratio: 16/9; }
 
-        /* Perfect Google Meet Style Speaking Indicator */
-        .video-wrapper.speaking { 
-            border-color: var(--gmeet-blue) !important; 
-            box-shadow: 0 0 0 4px rgba(138, 180, 248, 0.4) !important; 
-            z-index: 2; /* Pop over others when speaking */
+        /* Google Meet Style Pulse Animation */
+        @keyframes speaking-pulse {
+            0% { box-shadow: 0 0 0px var(--green); border-color: var(--green); }
+            50% { box-shadow: 0 0 20px var(--green); border-color: #4ade80; }
+            100% { box-shadow: 0 0 0px var(--green); border-color: var(--green); }
         }
+        .video-wrapper.speaking { border-color: var(--gmeet-blue) !important; box-shadow: 0 0 0 4px rgba(138, 180, 248, 0.4) !important; z-index: 2; }
 
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); transition: filter 0.3s; }
         video.is-screen { transform: scaleX(1) !important; object-fit: contain !important; background: #000; }
         
-        /* Safe Native CSS Shaders */
-        .f-noir video { filter: grayscale(100%) contrast(150%); }
-        .f-sepia video { filter: sepia(100%) contrast(110%); }
-        .f-cyber video { filter: hue-rotate(90deg) saturate(250%) contrast(120%); }
-        .f-blur video { filter: blur(12px); }
-
         /* Overlays & Badges */
         .avatar-view { position: absolute; inset: 0; background: #222; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5; }
-        
-        /* THE FIX: Only show Avatar if Camera is OFF AND we are NOT Sharing Screen */
         .cam-off:not(.is-sharing) .avatar-view { display: flex; }
+        .initials { width: 70px; height: 70px; background: var(--orange); color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; text-transform: uppercase;}
         
-        .initials { width: 80px; height: 80px; background: var(--orange); color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; text-transform: uppercase;}
-        
-        .info-bar { position: absolute; bottom: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
-        .name-tag { background: rgba(0,0,0,0.6); padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border-left: 3px solid var(--orange); backdrop-filter: blur(4px); }
-        .action-icons { display: flex; gap: 6px; }
-        .icon-badge { background: rgba(0,0,0,0.5); padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; backdrop-filter: blur(4px); }
+        .info-bar { position: absolute; bottom: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        .name-tag { background: rgba(0,0,0,0.7); padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; border-left: 3px solid var(--orange); backdrop-filter: blur(4px); max-width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .action-icons { display: flex; gap: 5px; }
+        .icon-badge { background: rgba(0,0,0,0.6); padding: 5px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; backdrop-filter: blur(4px); }
         .icon-badge:hover { background: var(--orange); color: black; }
         .icon-badge.red { background: rgba(234, 67, 53, 0.9); color: white; }
 
@@ -88,8 +91,8 @@
         .dropdown-item:hover { background: #2a2a2a; color: var(--orange); }
 
         /* Toasts */
-        #toast-container { position: fixed; top: 30px; right: 30px; z-index: 3000; display: flex; flex-direction: column; gap: 10px; pointer-events: none;}
-        .toast { background: var(--panel); border-left: 4px solid var(--orange); padding: 15px 20px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 10px; min-width: 250px; pointer-events: auto; animation: slideIn 0.3s ease;}
+        #toast-container { position: fixed; top: 20px; right: 20px; left: 20px; z-index: 3000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; align-items: flex-end;}
+        .toast { background: var(--panel); border-left: 4px solid var(--orange); padding: 15px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 10px; min-width: 250px; pointer-events: auto; animation: slideIn 0.3s ease;}
         @keyframes slideIn { from {transform: translateX(100%); opacity:0;} to {transform: translateX(0); opacity:1;} }
         .toast-actions { display: flex; gap: 10px; }
         .toast-btn { flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
@@ -97,64 +100,68 @@
         .t-deny { background: #333; color: white; }
 
         /* Bottom Controls */
-        #bottom-info { position: fixed; bottom: 35px; left: 30px; color: white; z-index: 90; font-weight: 600; display: flex; align-items: center; gap: 15px; }
-        #host-badge { background: var(--orange); color: black; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; display: none; font-weight: 800; letter-spacing: 1px; }
+        #bottom-info { position: fixed; bottom: 25px; left: 20px; color: white; z-index: 90; font-weight: 600; display: flex; align-items: center; gap: 12px; }
+        #host-badge { background: var(--orange); color: black; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; display: none; font-weight: 800; letter-spacing: 1px; }
 
-        #controls { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); background: rgba(20, 20, 24, 0.95); backdrop-filter: blur(20px); padding: 12px 30px; border-radius: 50px; display: flex; gap: 15px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 15px 40px rgba(0,0,0,0.9); z-index: 100; align-items: center; }
-        .circle-btn { width: 50px; height: 50px; border-radius: 50%; border: none; background: #2e2e33; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; flex-shrink: 0; position: relative; }
-        .circle-btn:hover { background: #444; transform: scale(1.1); }
+        #controls { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(20, 20, 24, 0.95); backdrop-filter: blur(20px); padding: 10px 20px; border-radius: 50px; display: flex; gap: 10px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 15px 40px rgba(0,0,0,0.9); z-index: 100; align-items: center; max-width: 95%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+        #controls::-webkit-scrollbar { display: none; }
+        
+        .circle-btn { width: 48px; height: 48px; border-radius: 50%; border: none; background: #2e2e33; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; flex-shrink: 0; position: relative; }
+        .circle-btn:hover { background: #444; transform: scale(1.05); }
         .circle-btn.red { background: var(--red); }
         .circle-btn.active { background: rgba(234, 67, 53, 0.2); color: var(--red); border: 1px solid var(--red); }
         
         .notification-dot { position: absolute; top: -2px; right: -2px; background: var(--red); color: white; font-size: 0.7rem; font-weight: bold; width: 18px; height: 18px; border-radius: 50%; display: none; align-items: center; justify-content: center; border: 2px solid #2e2e33; }
 
         /* Sleek Sidebars */
-        .sidebar { position: fixed; top: 0; right: -400px; width: 360px; height: 100vh; background: rgba(26, 26, 30, 0.98); backdrop-filter: blur(20px); border-left: 1px solid #333; transition: right 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 3000; display: flex; flex-direction: column; }
+        .sidebar { position: fixed; top: 0; right: -400px; width: 360px; height: 100vh; background: rgba(26, 26, 30, 0.98); backdrop-filter: blur(20px); border-left: 1px solid #333; transition: right 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 3000; display: flex; flex-direction: column; max-width: 100%; }
         .sidebar.open { right: 0; box-shadow: -20px 0 50px rgba(0,0,0,0.5); }
-        .side-head { padding: 25px 20px; font-weight: bold; font-size: 1.2rem; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        .side-head { padding: 20px; font-weight: bold; font-size: 1.1rem; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
         
         /* Professional Chat UI */
-        #chat-msgs { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        .chat-bubble { display: flex; flex-direction: column; max-width: 85%; }
+        #chat-msgs { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .chat-bubble { display: flex; flex-direction: column; max-width: 90%; }
         .chat-bubble.mine { align-self: flex-end; align-items: flex-end; }
         .chat-bubble.theirs { align-self: flex-start; align-items: flex-start; }
         
-        .chat-sender { font-size: 0.75rem; color: #888; margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
-        .chat-text { padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word;}
+        .chat-sender { font-size: 0.7rem; color: #888; margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
+        .chat-text { padding: 10px 14px; border-radius: 16px; font-size: 0.9rem; line-height: 1.4; word-wrap: break-word;}
         .chat-bubble.mine .chat-text { background: var(--orange); color: black; border-bottom-right-radius: 4px; }
         .chat-bubble.theirs .chat-text { background: #2a2a2f; color: white; border-bottom-left-radius: 4px; }
         
-        .chat-input { padding: 20px; border-top: 1px solid #333; display: flex; gap: 10px; background: #1a1a1e; }
-        .chat-input input { flex: 1; background: #111; border: 1px solid #444; color: white; padding: 12px 15px; border-radius: 20px; outline: none; transition: 0.2s; }
+        .chat-input { padding: 15px; border-top: 1px solid #333; display: flex; gap: 10px; background: #1a1a1e; }
+        .chat-input input { flex: 1; background: #111; border: 1px solid #444; color: white; padding: 12px 15px; border-radius: 20px; outline: none; transition: 0.2s; font-size: 0.9rem;}
         .chat-input input:focus { border-color: var(--orange); }
 
-        /* Native Shaders Grid */
-        .sidebar-content { padding: 20px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-content: start; }
-        .filter-header { font-size: 0.85rem; color: var(--orange); margin: 10px 0; text-transform: uppercase; font-weight: 800; letter-spacing: 1.5px; grid-column: span 2; border-bottom: 1px solid #333; padding-bottom: 5px;}
-        .filter-card { background: #000; border: 2px solid #222; border-radius: 14px; padding: 15px 10px; text-align: center; cursor: pointer; transition: 0.2s; font-weight: 700; font-size: 0.85rem; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-        .filter-card:hover, .filter-card.active { border-color: var(--orange); background: rgba(255,140,0,0.1); }
-
         /* Sleek Invite Popup */
-        #invite-popup { position: fixed; bottom: 100px; left: 30px; width: 340px; background: var(--panel); color: white; padding: 25px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); z-index: 500; border: 1px solid rgba(255,255,255,0.1); display: none; animation: slideUp 0.3s ease; }
-        @keyframes slideUp { from {transform: translateY(20px); opacity:0;} to {transform: translateY(0); opacity:1;} }
-        #invite-popup h3 { margin: 0 0 15px 0; font-size: 1.2rem; display: flex; justify-content: space-between; align-items: center; }
-        .copy-box { background: #000; padding: 15px; border-radius: 10px; font-size: 0.85rem; color: #aaa; margin-bottom: 20px; word-break: break-all; border: 1px solid #333; }
+        #invite-popup { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 360px; background: var(--panel); color: white; padding: 20px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); z-index: 500; border: 1px solid rgba(255,255,255,0.1); display: none; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from {transform: translate(-50%, 20px); opacity:0;} to {transform: translate(-50%, 0); opacity:1;} }
+        #invite-popup h3 { margin: 0 0 15px 0; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center; }
+        .copy-box { background: #000; padding: 12px; border-radius: 10px; font-size: 0.8rem; color: #aaa; margin-bottom: 20px; word-break: break-all; border: 1px solid #333; }
 
-        @media (max-width: 900px) { 
-            .prejoin-container { flex-direction: column; padding: 20px;} 
-            .prejoin-video-box, .name-card { width: 100%; max-width: 100%; }
-            #invite-popup { left: 50%; transform: translateX(-50%); bottom: 100px; width: 90%; max-width: 400px; }
-            #controls { width: 95%; max-width: 500px; padding: 12px; gap: 10px; justify-content: space-between;}
-            .circle-btn { width: 44px; height: 44px; }
-            .sidebar { width: 100%; right: -100%; }
+        /* MOBILE OPTIMIZATIONS */
+        @media (max-width: 768px) { 
+            .prejoin-container { padding: 0; gap: 20px; } 
+            .prejoin-video-box { border-radius: 12px; }
+            .name-card { padding: 25px 20px; border-radius: 12px; }
+            
+            #main-stage { padding: 10px 10px 80px 10px; }
+            #video-grid { gap: 10px; }
+            .video-wrapper { flex: 1 1 100%; max-width: 100%; border-radius: 12px; }
+            .video-wrapper.pinned { height: 40vh; }
+            #video-grid.has-pinned .video-wrapper:not(.pinned) { flex: 1 1 45%; max-width: 48%; }
+            
+            #bottom-info { display: none; } /* Hide room id on small screens to save space */
+            
+            #controls { width: 95%; padding: 8px 15px; gap: 8px; justify-content: space-between; bottom: 15px;}
+            .circle-btn { width: 42px; height: 42px; }
+            
+            #toast-container { top: 15px; right: 15px; left: 15px; align-items: center;}
+            .toast { width: 100%; min-width: unset; }
         }
     </style>
 </head>
 <body>
-
-    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
-        <filter id="svg-thermal"><feColorMatrix type="matrix" values="0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0.33 0.34 0.33 0 0 0 0 0 1 0" result="gray"/><feComponentTransfer><feFuncR type="table" tableValues="0 0 1 1 1"/><feFuncG type="table" tableValues="0 0 0 1 1"/><feFuncB type="table" tableValues="1 0 0 0 1"/></feComponentTransfer></filter>
-    </svg>
 
     <div id="prejoin-overlay" class="full-overlay">
         <div class="prejoin-container">
@@ -174,12 +181,13 @@
                     <h2>Ready to Join?</h2>
                     <div class="auth-badge"><span class="material-symbols-outlined">verified</span> Verified by Google</div>
                     <input type="text" id="username" value="{{ user_name }}" readonly>
-                    <button class="btn-primary" onclick="executeJoin()">Join Secure Meeting</button>
-                    <p style="margin-top: 20px; font-size: 0.8rem; color: #888; margin-bottom: 0;">Keyboard Shortcuts:<br><kbd>Ctrl+D</kbd> (Mic) | <kbd>Ctrl+E</kbd> (Camera)</p>
+                    <button class="btn-primary" onclick="executeJoin()">Join Meeting</button>
+                    <p style="margin-top: 15px; font-size: 0.75rem; color: #888; margin-bottom: 0;">Shortcuts: <kbd>Ctrl+D</kbd> (Mic) | <kbd>Ctrl+E</kbd> (Camera)</p>
                 {% else %}
                     <h2>Login Required</h2>
-                    <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px;">You must sign in with Google to enter this secure room.</p>
-                    <button class="google-btn" onclick="window.location.href='/login'">
+                    <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;">You must sign in with Google to enter this secure room.</p>
+                    
+                    <button class="google-btn" onclick="window.location.href='/login?next=' + encodeURIComponent(window.location.pathname)">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google">
                         Sign in with Google
                     </button>
@@ -192,7 +200,7 @@
         <div class="name-card" style="background: transparent; border: none; box-shadow: none;">
             <div class="spinner"></div>
             <h2 style="margin-bottom: 10px;">Connecting...</h2>
-            <p style="color: #aaa;">Waitng for the host to let you in.</p>
+            <p style="color: #aaa;">Waiting for the host to let you in...</p>
         </div>
     </div>
 
@@ -200,9 +208,9 @@
     
     <div id="bottom-info">
         <span id="host-badge">HOST</span>
-        <span style="color: #aaa; font-size: 0.9rem; font-family: monospace;">{{ room_id }}</span>
+        <span style="color: #aaa; font-size: 0.8rem; font-family: monospace;">{{ room_id }}</span>
         <span style="color: #666;">|</span>
-        <span id="clock"></span>
+        <span id="clock" style="font-size: 0.8rem;"></span>
     </div>
 
     <div id="main-stage">
@@ -224,45 +232,31 @@
     <div id="chat-sidebar" class="sidebar">
         <div class="side-head">In-Call Messages <span class="material-symbols-outlined" style="cursor:pointer;" onclick="toggleSidebar('chat-sidebar')">close</span></div>
         <div id="chat-msgs">
-            <div style="text-align: center; color: #666; font-size: 0.8rem; margin-top: 10px;">Messages are end-to-end encrypted.</div>
+            <div style="text-align: center; color: #666; font-size: 0.75rem; margin-top: 10px;">Messages are end-to-end encrypted.</div>
         </div>
         <div class="chat-input">
             <input type="text" id="chatIn" placeholder="Send a message..." onkeypress="if(event.key==='Enter') sendChat()">
-            <button class="circle-btn" style="width: 44px; height: 44px; background: var(--orange); color: black;" onclick="sendChat()"><span class="material-symbols-outlined" style="font-size: 1.2rem;">send</span></button>
-        </div>
-    </div>
-
-    <div id="appearance-sidebar" class="sidebar">
-        <div class="side-head">Visuals <span class="material-symbols-outlined" style="cursor:pointer;" onclick="toggleSidebar('appearance-sidebar')">close</span></div>
-        <div id="appearance-content" class="sidebar-content">
-            <div class="filter-header">Safe Native Shaders</div>
-            <div class="filter-card active" onclick="applyEffect('none', this)" style="grid-column: span 2;"><span>❌</span>No Filter</div>
-            <div class="filter-card" onclick="applyEffect('f-blur', this)" style="grid-column: span 2;"><span>🌫️</span>Privacy Blur (Heavy)</div>
-            <div class="filter-card" onclick="applyEffect('f-noir', this)"><span>🎬</span>Noir</div>
-            <div class="filter-card" onclick="applyEffect('f-sepia', this)"><span>📜</span>Sepia</div>
-            <div class="filter-card" onclick="applyEffect('f-cyber', this)"><span>🚀</span>Cyberpunk</div>
-            <div class="filter-card" onclick="applyEffect('f-thermal', this)"><span>🔥</span>Thermal</div>
+            <button class="circle-btn" style="width: 42px; height: 42px; background: var(--orange); color: black;" onclick="sendChat()"><span class="material-symbols-outlined" style="font-size: 1.1rem;">send</span></button>
         </div>
     </div>
 
     <div id="invite-popup">
         <h3>Invite Participants <span class="material-symbols-outlined" style="cursor:pointer; color:#aaa; font-size:1.2rem;" onclick="toggleInvite()">close</span></h3>
-        <p style="font-size: 0.85rem; color: #888; margin-top: -10px; margin-bottom: 15px;">Share this link with others you want in the meeting.</p>
+        <p style="font-size: 0.8rem; color: #888; margin-top: -10px; margin-bottom: 15px;">Share this link with others you want in the meeting.</p>
         <div class="copy-box" id="meet-link"></div>
-        <button onclick="copyLink()" class="btn-primary" style="width: 100%; padding: 12px; font-size: 1rem; display: flex; justify-content: center; gap: 8px;"><span class="material-symbols-outlined">content_copy</span> Copy Joining Info</button>
+        <button onclick="copyLink()" class="btn-primary" style="width: 100%; padding: 12px; font-size: 0.95rem; display: flex; justify-content: center; gap: 8px;"><span class="material-symbols-outlined" style="font-size: 1.2rem;">content_copy</span> Copy Joining Info</button>
     </div>
 
     <div id="controls">
         <button class="circle-btn" id="micBtn" onclick="toggleMic()"><span class="material-symbols-outlined">mic</span></button>
         <button class="circle-btn" id="camBtn" onclick="toggleCam()"><span class="material-symbols-outlined">videocam</span></button>
         <button class="circle-btn" id="shareBtn" onclick="toggleScreen()"><span class="material-symbols-outlined">present_to_all</span></button>
-        <button class="circle-btn" onclick="toggleSidebar('appearance-sidebar')"><span class="material-symbols-outlined">palette</span></button>
         <button class="circle-btn" onclick="toggleInvite()"><span class="material-symbols-outlined">person_add</span></button>
         <button class="circle-btn" onclick="toggleSidebar('chat-sidebar')">
             <span class="material-symbols-outlined">chat</span>
             <div class="notification-dot" id="chat-badge">0</div>
         </button>
-        <button class="circle-btn red" onclick="window.location.href='/'" style="width: 75px; border-radius: 25px;"><span class="material-symbols-outlined">call_end</span></button>
+        <button class="circle-btn red" onclick="window.location.href='/'" style="width: 65px; border-radius: 25px;"><span class="material-symbols-outlined">call_end</span></button>
     </div>
 
 <script>
@@ -283,7 +277,7 @@
     const signalQueue = {};
     const processingQueue = {};
     
-    // Redundant Enterprise STUN Servers for robust NAT Traversal
+    // Redundant Enterprise STUN Servers
     const config = { 
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -309,7 +303,7 @@
     async function initMedia() {
         if(!myName || myName === "Guest") return; 
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
             document.getElementById('prejoin-video').srcObject = localStream;
         } catch(e) { 
             console.warn("Hardware error, creating empty stream.", e); 
@@ -336,12 +330,13 @@
         const track = localStream.getVideoTracks()[0]; track.enabled = !track.enabled;
         const btn = document.getElementById('pj-cam-btn'); btn.classList.toggle('red', !track.enabled);
         btn.innerHTML = track.enabled ? '<span class="material-symbols-outlined">videocam</span>' : '<span class="material-symbols-outlined">videocam_off</span>';
-        
-        // This ensures the avatar is visible in the pre-join room if the camera is clicked off
         document.getElementById('prejoin-wrapper').classList.toggle('cam-off', !track.enabled);
     }
 
     function executeJoin() {
+        // Prevent accidental double clicks
+        if (hasJoined) return;
+        
         document.getElementById('prejoin-overlay').style.display = 'none';
         document.getElementById('waiting-overlay').style.display = 'flex';
         hasJoined = true;
@@ -353,23 +348,6 @@
         if (localStream.getAudioTracks()[0] && !localStream.getAudioTracks()[0].enabled) forceSetMic(false);
         
         socket.emit('request-join', { room, userId: myId, name: myName });
-    }
-
-    // --- 100% SAFE NATIVE CSS SHADERS ---
-    function applyEffect(val, el) {
-        document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
-        if(el.tagName !== 'DIV') el.parentElement.classList.add('active'); else el.classList.add('active');
-
-        const wrapperId = hasJoined ? 'local-wrapper' : 'prejoin-wrapper';
-        const wrapper = document.getElementById(wrapperId);
-        
-        wrapper.className = wrapper.className.replace(/\bf-\S+/g, '');
-        if (val !== 'none') {
-            wrapper.classList.add(val);
-            if (hasJoined) socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: val });
-        } else {
-            if (hasJoined) socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: 'none' });
-        }
     }
 
     // --- STANDARD ROOM LOGIC ---
@@ -385,6 +363,7 @@
     }
 
     socket.on('join-denied', () => { alert("Host declined your request."); window.location.href = '/'; });
+    
     socket.on('join-accepted', data => {
         isHost = data.isHost;
         document.getElementById('waiting-overlay').style.display = 'none';
@@ -393,7 +372,6 @@
         monitorSpeech(localStream, 'local-wrapper');
     });
 
-    // Make someone else host if current host drops
     socket.on('admin-action', data => {
         if (data.action === 'kick') window.location.href = '/';
         else if (data.action === 'mute') forceSetMic(false);
@@ -403,9 +381,15 @@
             document.getElementById('host-badge').style.display = 'inline-block';
             showToast("You are now the meeting Host.", "sys");
         }
+        else if (data.action === 'demote-host') {
+            isHost = false;
+            document.getElementById('host-badge').style.display = 'none';
+            showToast("Master Admin joined. You are no longer the host.", "sys");
+            document.querySelectorAll('.host-dropdown').forEach(d => d.classList.remove('show'));
+            document.querySelectorAll('.host-menu-btn').forEach(btn => btn.remove());
+        }
     });
 
-    // User explicitly leaves (Server handles dropping out)
     socket.on('user-left', data => {
         const pid = data.userId;
         if (peers[pid]) {
@@ -428,7 +412,7 @@
     function forceSetCam(state) {
         if (localStream.getVideoTracks()[0]) localStream.getVideoTracks()[0].enabled = state;
         
-        // By skipping the toggle during screen share, the CSS logic perfectly overrides the avatar
+        // The fix: CSS will only display the Avatar if the wrapper has .cam-off AND NOT .is-sharing
         document.getElementById('local-wrapper').classList.toggle('cam-off', !state);
         
         const btn = document.getElementById('camBtn'); btn.classList.toggle('active', !state);
@@ -441,7 +425,7 @@
 
     socket.on('user-joined', data => initConn(data.userId, data.name, true));
     
-    // --- ASYNCHRONOUS WEBRTC QUEUE (FIXES 4+ PEOPLE CRASH) ---
+    // --- ASYNCHRONOUS WEBRTC QUEUE ---
     socket.on('signal', async d => {
         if (!peers[d.sender]) initConn(d.sender, d.name || "Guest", false);
         if (!signalQueue[d.sender]) signalQueue[d.sender] = [];
@@ -500,16 +484,11 @@
             
             monitorSpeech(e.streams[0], `wrap-${pid}`);
             
-            // Sync current states to the new user immediately
+            // Sync current states
             socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'cam', state: !document.getElementById('local-wrapper').classList.contains('cam-off') });
             if(localStream.getAudioTracks()[0]) socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'mic', state: localStream.getAudioTracks()[0].enabled });
             socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'screen', state: isSharingScreen });
             
-            const activeFilter = document.querySelector('.filter-card.active').getAttribute('onclick');
-            if (activeFilter && activeFilter.includes('css')) {
-                const match = activeFilter.match(/'([^']+)'/g);
-                if (match && match.length >= 2) socket.emit('chat-msg', { room, sys: true, userId: myId, type: 'filter', state: match[1].replace(/'/g, '') });
-            }
             checkGridSize();
         };
         
@@ -520,7 +499,7 @@
     async function toggleScreen() {
         if (!isSharingScreen) {
             try {
-                // Audio parameter removed to guarantee 100% browser compatibility
+                // Audio parameter strictly removed for maximum browser compatibility
                 screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true }); 
                 const track = screenStream.getVideoTracks()[0];
                 Object.values(peers).forEach(p => { const s = p.pc.getSenders().find(s => s.track && s.track.kind === 'video'); if(s) s.replaceTrack(track); });
@@ -651,7 +630,6 @@
             if (w) {
                 if (data.type === 'cam') w.classList.toggle('cam-off', !data.state);
                 else if (data.type === 'mic') { const b = document.getElementById(data.userId === myId ? 'local-mic-badge' : `mic-badge-${data.userId}`); if(b) b.style.display = data.state ? 'none' : 'flex'; }
-                else if (data.type === 'filter') { w.className = w.className.replace(/\bf-\S+/g, ''); if (data.state !== 'none') w.classList.add(data.state); }
                 else if (data.type === 'screen') { 
                     if (vid) { 
                         if (data.state) { 
