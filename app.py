@@ -11,7 +11,7 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-dev-key')
 
-# manage_session=False ensures Flask and SocketIO share the same Google Login data perfectly
+# manage_session=False ensures Flask and SocketIO share the Google Login session perfectly
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', manage_session=False)
 
 # --- OAUTH SETUP ---
@@ -24,16 +24,29 @@ google = oauth.register(
     client_kwargs={'scope': 'openid email profile'}
 )
 
-# --- SECURITY & ROOMS LOGIC ---
+# --- SECURITY & VIP LOGIC ---
 RESTRICTED_ROOMS = ['secretariat']
-MASTER_ADMIN = 'sg.sodmun@gmail.com'
+
+# These users will ALWAYS become Host in any room, and are the ONLY allowed hosts in /interviews
+VIP_EMAILS = [
+    'shahvishesh2009@gmail.com', 
+    'sg.sodmun@gmail.com', 
+    'sg.sodmun.com', 
+    'ramp31282@gmail.com', 
+    'dhairyakamlani09@gmail.com', 
+    'nandaniyamat@gmail.com', 
+    'aaravmamtani74@gmail.com', 
+    'aashi.rayan123@gmail.com'
+]
 
 raw_emails = os.getenv('ALLOWED_EMAILS', '').split(',')
 ALLOWED_EMAILS = [email.strip().lower() for email in raw_emails if email.strip()]
 
-# JSON-Style State Management
-active_rooms = {}  # Format: {'room_id': {'host': 'user_id', 'participants': {'sid': 'user_id'}}}
-user_sessions = {} # Format: {'sid': {'room': 'room_id', 'userId': 'user_id', 'name': 'name'}}
+# Bulletproof JSON-Style State Management
+active_rooms = {}  
+# Format: {'room_id': {'host': 'user_id', 'host_email': 'email', 'participants': {'sid': 'user_id'}, 'waiting': {'user_id': {'name': 'name'}}}}
+user_sessions = {} 
+# Format: {'sid': {'room': 'room_id', 'userId': 'user_id', 'name': 'name', 'email': 'email'}}
 
 @app.route('/login')
 def login():
@@ -65,7 +78,7 @@ def create_room():
 
 @app.route('/<room_id>')
 def meeting(room_id):
-    # BULLETPROOF SANITIZATION: Forces all links into the exact same parallel universe
+    # SANITIZATION: Forces all links into the exact same parallel universe
     room_id = room_id.strip().lower()
 
     if 'user' not in session:
@@ -73,9 +86,11 @@ def meeting(room_id):
         return redirect(url_for('login'))
         
     user_email = session['user'].get('email', '').strip().lower()
+    is_vip = user_email in VIP_EMAILS
 
+    # Hard Block for restricted rooms
     if room_id in RESTRICTED_ROOMS:
-        if user_email != MASTER_ADMIN and user_email not in ALLOWED_EMAILS:
+        if not is_vip and user_email not in ALLOWED_EMAILS:
             return f"""
             <html>
             <head><title>Access Denied</title><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet"></head>
@@ -101,40 +116,80 @@ def request_join(data):
     name = data['name']
     sid = request.sid
     
-    # Grab the user's email directly from their Google Login session
+    # Grab the user's email directly from their Google Login session to prevent spoofing
     user_email = session.get('user', {}).get('email', '').strip().lower()
-    is_master = (user_email == MASTER_ADMIN)
+    is_vip = user_email in VIP_EMAILS
     
-    # Initialize room in JSON state if it doesn't exist
+    # Initialize room memory if it doesn't exist
     if room not in active_rooms:
-        active_rooms[room] = {'host': None, 'participants': {}}
+        active_rooms[room] = {'host': None, 'host_email': None, 'participants': {}, 'waiting': {}}
     
-    user_sessions[sid] = {'room': room, 'userId': user_id, 'name': name}
+    user_sessions[sid] = {'room': room, 'userId': user_id, 'name': name, 'email': user_email}
     join_room(user_id) # Temporary personal room for direct signaling
     
     current_host = active_rooms[room]['host']
+    current_host_email = active_rooms[room]['host_email']
 
-    # THE MASTER ADMIN OVERRIDE
-    # If the room has no host OR if the person joining is the Master Admin
-    if current_host is None or is_master:
-        active_rooms[room]['host'] = user_id
-        
-        # If there was an old host and the Master Admin usurped them, demote the old host
-        if is_master and current_host and current_host != user_id:
+    become_host = False
+    usurp_host = False
+
+    # HOST ASSIGNMENT LOGIC
+    if current_host is None:
+        # If the room is empty, they become host... UNLESS it's interviews and they aren't a VIP.
+        if room == 'interviews' and not is_vip:
+            become_host = False 
+        else:
+            become_host = True
+    else:
+        # Room is not empty. If joining user is a VIP, and current host is NOT a VIP, usurp them.
+        if is_vip and current_host_email not in VIP_EMAILS:
+            become_host = True
+            usurp_host = True
+
+    if become_host:
+        # Tell the old host they have been demoted
+        if usurp_host and current_host:
             emit('admin-action', {'action': 'demote-host'}, to=current_host)
             
+        # Crown the new VIP Host
+        active_rooms[room]['host'] = user_id
+        active_rooms[room]['host_email'] = user_email
         emit('join-accepted', {'isHost': True}, to=user_id)
+        
+        # CRITICAL: Forward anyone who was stuck in the waiting room to the new VIP Host!
+        for w_uid, w_data in list(active_rooms[room]['waiting'].items()):
+            emit('join-request', {'userId': w_uid, 'name': w_data['name']}, to=user_id)
+            
     else:
-        # Ask current host for permission
-        emit('join-request', {'userId': user_id, 'name': name}, to=current_host)
+        # They are a normal user requesting to join
+        if active_rooms[room]['host']:
+            emit('join-request', {'userId': user_id, 'name': name}, to=active_rooms[room]['host'])
+        else:
+            # If they join /interviews and no VIP is there yet, they are quietly buffered in memory
+            active_rooms[room]['waiting'][user_id] = {'name': name}
 
 @socketio.on('admit-user')
 def admit_user(data):
-    emit('join-accepted', {'isHost': False}, to=data['target'])
+    target_id = data['target']
+    sid = request.sid
+    room = user_sessions.get(sid, {}).get('room')
+    
+    # Remove from waiting buffer
+    if room and target_id in active_rooms.get(room, {}).get('waiting', {}):
+        del active_rooms[room]['waiting'][target_id]
+        
+    emit('join-accepted', {'isHost': False}, to=target_id)
 
 @socketio.on('deny-user')
 def deny_user(data):
-    emit('join-denied', {}, to=data['target'])
+    target_id = data['target']
+    sid = request.sid
+    room = user_sessions.get(sid, {}).get('room')
+    
+    if room and target_id in active_rooms.get(room, {}).get('waiting', {}):
+        del active_rooms[room]['waiting'][target_id]
+        
+    emit('join-denied', {}, to=target_id)
 
 @socketio.on('join-room')
 def on_join(data):
@@ -147,7 +202,6 @@ def on_join(data):
     if room in active_rooms:
         active_rooms[room]['participants'][sid] = user_id
 
-    # Broadcast to everyone else that a new peer has arrived
     emit('user-joined', {'userId': user_id, 'name': name}, to=room, include_self=False)
 
 @socketio.on('signal')
@@ -156,8 +210,8 @@ def handle_signal(data):
 
 @socketio.on('chat-msg')
 def handle_chat(data):
+    # STRICT TUNNELING: Prevents Chat Parallel Universes
     room = data.get('room', '').strip().lower()
-    # STRICT TUNNELING: Chat messages can only go to people in this exact sanitized room
     emit('chat-msg', data, to=room)
 
 @socketio.on('admin-action')
@@ -172,19 +226,40 @@ def handle_disconnect():
         room = user_data['room']
         user_id = user_data['userId']
         
-        # Remove from active rooms JSON
-        if room in active_rooms and sid in active_rooms[room]['participants']:
-            del active_rooms[room]['participants'][sid]
-            
-            # If the host leaves, randomly assign a new host if people are still there
-            if active_rooms[room]['host'] == user_id:
-                if active_rooms[room]['participants']:
-                    new_host_sid = list(active_rooms[room]['participants'].keys())[0]
-                    new_host_id = active_rooms[room]['participants'][new_host_sid]
+        if room in active_rooms:
+            # Remove from waiting buffer if they dropped out early
+            if user_id in active_rooms[room]['waiting']:
+                del active_rooms[room]['waiting'][user_id]
+                
+            # Remove from active participants
+            if sid in active_rooms[room]['participants']:
+                del active_rooms[room]['participants'][sid]
+                
+                # If the HOST leaves, securely pick a new host
+                if active_rooms[room]['host'] == user_id:
+                    new_host_id = None
+                    new_host_email = None
+                    
+                    for p_sid, p_uid in active_rooms[room]['participants'].items():
+                        p_email = user_sessions.get(p_sid, {}).get('email', '')
+                        
+                        if room == 'interviews':
+                            # Only promote remaining VIPs in the interviews room
+                            if p_email in VIP_EMAILS:
+                                new_host_id = p_uid
+                                new_host_email = p_email
+                                break
+                        else:
+                            # Promote anyone in normal rooms
+                            new_host_id = p_uid
+                            new_host_email = p_email
+                            break
+                            
                     active_rooms[room]['host'] = new_host_id
-                    emit('admin-action', {'action': 'make-host'}, to=new_host_id)
-                else:
-                    active_rooms[room]['host'] = None # Room is empty
+                    active_rooms[room]['host_email'] = new_host_email
+                    
+                    if new_host_id:
+                        emit('admin-action', {'action': 'make-host'}, to=new_host_id)
         
         # Tell everyone in the room to strictly delete this user's video element
         emit('user-left', {'userId': user_id}, to=room)
